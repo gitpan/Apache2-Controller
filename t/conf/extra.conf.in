@@ -1,0 +1,37 @@
+# this file will be Include-d by @ServerRoot@/httpd.conf
+
+# @ServerRoot@ = t directory
+
+LoadModule apreq_module /usr/lib/apache2/modules/mod_apreq2.so
+
+# where Apache2::Controller and the test application libs can be found
+PerlSwitches -I@ServerRoot@/lib 
+
+PerlModule Apache::DBI
+PerlModule Apache2::Reload
+PerlModule Apache2::Request
+PerlModule Apache2::RequestRec
+PerlModule Apache2::Upload
+PerlModule Apache2::RequestUtil
+PerlModule Apache2::Cookie
+PerlModule Apache2::RequestIO
+
+#PerlLoadModule Apache2::Controller::Directives
+PerlSetEnv A2CRenderTemplateDir @ServerRoot@/templates
+
+PerlModule TestApp::Simple::Dispatch
+PerlModule TestApp::Render::Dispatch
+
+# preload the module
+<Location /simple>
+    SetHandler modperl
+    PerlOptions +SetupEnv
+    PerlInitHandler TestApp::Simple::Dispatch
+</Location>
+
+<Location /render>
+    SetHandler modperl
+    PerlOptions +SetupEnv
+    PerlInitHandler TestApp::Render::Dispatch
+</Location>
+
