@@ -1,0 +1,47 @@
+--- #YAML:1.0
+name:                Apache2-Controller
+version:             0.0002
+abstract:            framework for Apache2 handler apps
+license:             ~
+author:              
+    - Mark Hedges <hedges@scriptdolphin.org>
+generated_by:        ExtUtils::MakeMaker version 6.42
+distribution_type:   module
+requires:     
+    Apache2::CmdParms:             
+    Apache2::Connection:           
+    Apache2::Const:                
+    Apache2::Cookie:               
+    Apache2::Directive:            
+    Apache2::Module:               
+    Apache2::Request:              
+    Apache2::RequestIO:            
+    Apache2::RequestRec:           
+    Apache2::RequestUtil:          
+    Apache::Session:               
+    Apache::Session::File:         
+    Apache::Test:                  
+    Apache::TestMM:                
+    Apache::TestRequest:           
+    Apache::TestRunPerl:           
+    Apache::TestUtil:              
+    Digest::SHA:                   
+    English:                       
+    Exception::Class:              
+    ExtUtils::MakeMaker:           
+    File::Spec:                    
+    FindBin:                       
+    HTML::Entities:                
+    HTTP::Status:                  
+    List::MoreUtils:               
+    Log::Log4perl:                 
+    Readonly:                      
+    Scalar::Util:                  
+    Template:                      
+    Test::More:                    
+    URI:                           
+    URI::Escape:                   
+    YAML::Syck:                    
+meta-spec:
+    url:     http://module-build.sourceforge.net/META-spec-v1.3.html
+    version: 1.3

@@ -28,7 +28,7 @@ our @EXPORT_OK = qw(
 );
 
 sub diag {
-    do { s{ ^ }{# }mxsg; print $_, "\n"; } for @_;
+    do { my $str = $_; $str =~ s{ ^ }{# }mxsg; print "$str\n"; } for @_;
 }
 
 1;

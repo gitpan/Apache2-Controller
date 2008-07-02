@@ -27,7 +27,7 @@ for my $tag (@tags) {
 }
 
 print sprintf(
-    "%3s %35s %35s", 'RC', 'Apache2::Const::*', 'HTTP::Status status_message'
+    "%3s %35s %35s %35s", 'RC', 'Apache2::Const::*', 'HTTP::Status status_message'
 ), "\n", '-' x 77, "\n";
 
 for my $tag (sort { $numbers{$a} <=> $numbers{$b} } @tags) {

@@ -11,7 +11,6 @@ Apache2::Controller::Dispatch - dispatch base class for Apache::Controller
 
  <Location />
      SetHandler modperl
-     PerlOptions +SetupEnv
      PerlInitHandler MyApp::Dispatch
  </Location>
 

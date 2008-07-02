@@ -33,18 +33,25 @@ use English '-no_match_vars';
 
 use Apache2::Controller::X;
 use Apache2::Cookie;
+use Apache2::Request;
 use YAML::Syck;
 use Log::Log4perl qw( :easy );
 
-=head2 get_directives( )
+=head2 get_directives
 
  my $directives_hashref = $self->get_directives();
 
-Returns the Apache2::Controller::Directives config hash for this request,
+Returns the L<Apache2::Controller::Directives> config hash for this request,
 with per-directory settings.
 
-NOTE: directives don't work because of problems with Apache::Test.
-For now it returns \%ENV instead.
+NOTE: real directives don't work because of problems with Apache::Test.
+For now use C<PerlSetVar>.
+
+When directives work, if you mix A2C Directives with PerlSetVar
+statements in Apache config, the directives take precedence
+and the PerlSetVar values are not merged.  Hrmm.  
+Well, I think there's a method, but I've got better
+things to work on right now.
 
 =cut
 
@@ -53,19 +60,41 @@ sub get_directives {
 
     my $r = $self->{r};
 
-    $r->pnotes->{directives} ||= Apache2::Module::get_config(
+    my $directives = $r->pnotes->{directives};
+    return $directives if $directives;
+
+    $directives = Apache2::Module::get_config(
         'Apache2::Controller::Directives',
         $r->server(),
         $r->per_dir_config(),
     );
+    DEBUG(sub{
+        my @directive_keys = keys %{$directives};
+        "Apache2::Controller::Directives: (@directive_keys)\n"
+        .Dump({ map {($_ => $directives->{$_})} @directive_keys });
+    });
 
-    # since my directives don't work under Apache::Test I look for
-    # the names of the same vars in %ENV until they do.  blah.
-    $r->pnotes->{directives} ||= \%ENV;
-    return $r->pnotes->{directives};
+    my $dir_config = $r->dir_config();
+    my @all_setvars = keys %{$dir_config};
+    DEBUG(sub {
+        "PerlSetVars (@all_setvars):\n"
+        .Dump({ map {($_ => $dir_config->{$_})} @all_setvars })
+    });
+    my @setvar_names = grep !exists $directives->{$_}, @all_setvars;
+    PERLSETVAR:
+    for my $perlsetvar (@setvar_names) {
+        my @values = $dir_config->get($perlsetvar);
+        DEBUG(sub { "$perlsetvar: ".join(', ', map "'$_'", @values) });
+        ($directives->{$perlsetvar}) = @values > 1 ? \@values : @values;
+    }
+
+    DEBUG(sub{"directives found:\n".Dump($directives)});
+
+    $r->pnotes->{directives} = $directives;
+    return $directives;
 }
 
-=head2 get_directive( )
+=head2 get_directive
 
  my $value = $self->get_directive( $A2CDirectiveNameString )
 
@@ -73,15 +102,12 @@ Returns the value of the given directive name.  Does not die if
 get_directives() returns an empty hash.
 
 NOTE: directives don't work because of problems with Apache::Test.
-For now it returns values from %ENV instead.
+For now use C<PerlSetVar>.
 
 =cut
 
 sub get_directive {
     my ($self, $directive) = @_;
-
-    # temporarily i'm getting variables from ENV until I work out
-    # why directives don't work right with Apache2::Test.
 
     Apache2::Controller::X->throw('usage: $self->get_directive($directive)') 
         if !$directive;
@@ -90,7 +116,7 @@ sub get_directive {
     return $directives->{$directive};
 }
 
-=head2 get_apache2_request_opts( )
+=head2 get_apache2_request_opts
 
  my %opts = $self->get_apache2_request_opts( $controller_class_name );
 
@@ -124,29 +150,52 @@ sub get_apache2_request_opts {
     return %{ $apache2_request_opts{$controller} };
 }
 
-=head2 get_cookies( )
+=head2 get_cookie_jar
 
- my $cookies = $self->get_cookies();
+ my $jar = $self->get_cookie_jar();
 
-Fetches cookies with Apache2::Cookie->fetch.  Caches them in 
-$self->pnotes->{cookies} for the duration of the request.
+Fetches cookies with Apache2::Cookie::Jar.  Caches them in 
+C<<$self->pnotes->{cookie_jar}>> for the duration of the request.
+Further calls to get_cookie_jar() from any handler will return the
+same jar without re-parsing them.
+
+=for comment
+
+probably not....
+
+If C<<$self>> is not an L<Apache2::Request>,
+the request object will be created temporarily to pass to 
+L<Apache2::Cookie::Jar>.  The man page for L<Apache2::Request>
+says that in version 2.2 of Apache, at any rate, this is always
+the same object during the lifecycle of a request.  
+But we use the 'instance' method here if necessary to create it.
+Your mileage may vary.
+
+because the only thing passed on is the pool from the obj,
+and Jar's delegate says it takes a RequestRec
 
 =cut
 
-sub get_cookies {
+sub get_cookie_jar {
     my ($self) = @_;
     my $r = $self->{r};
-    my $cookies = $r->pnotes->{cookies};
-    return $cookies if defined $cookies;
-    $cookies = Apache2::Cookie->fetch($r);
-    DEBUG(sub {"cookies:".Dump({ map {($_ => $cookies->{$_})} keys %{$cookies} })});
-    $r->pnotes->{cookies} = $cookies;
-    return $cookies;
+    DEBUG(sub {"raw cookie headers: ".($r->headers_in->{Cookie} || '[no cookies]') });
+    DEBUG('searching for cookie_jar in r->pnotes->{cookie_jar}');
+    my $jar = $r->pnotes->{cookie_jar};
+    return $jar if defined $jar;
+    DEBUG('did not find cookie_jar in pnotes');
+    $jar = Apache2::Cookie::Jar->new($r);
+    my @cookie_names = $jar->cookies;
+    DEBUG(sub {"cookie names in jar:\n".Dump(\@cookie_names)});
+    $r->pnotes->{cookie_jar} = $jar;
+    return $jar;
 }
 
 =head1 SEE ALSO
 
 L<Apache2::Controller>
+
+L<Apache2::Controller::Session>
 
 L<Apache2::Request>
 

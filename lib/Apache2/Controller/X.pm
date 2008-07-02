@@ -78,6 +78,24 @@ will then be set as the http_status for the request.
      http_status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR,
  );
 
+=head2 status_line
+
+Combined with http_status, when intercepted by L<Apache2::Controller/handler>
+this sets a custom message with L<Apache2::RequestRec/status_line>.
+
+ Apache2::Controller::X->throw(
+     message => "Warp injection coil failure in unit 3-A-73",
+     http_status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR,
+     status_line => "Turbulence ahead. Please buckle your safety belts.",
+ );
+
+This differentiation can be used to display technical information
+in the log while giving a nice message to the user.
+
+If L<Apache2::Controller::Render::Template/error> is used,
+status_line is preferentially used to translate the error code,
+otherwise it uses L<HTTP::Status/status_message>.
+
 =head2 dump
 
 An arbitrary data structure which Apache2::Controller will send
@@ -100,14 +118,32 @@ This works by setting $r->location(), not through an internal redirect.
 If you want to do an internal redirect, just do it with 
 $self->internal_redirect() inherited from Apache2::SubRequest.
 
+=cut
+
+use Exception::Class (
+    'Apache2::Controller::X'           => { 
+        fields  => [qw( message dump http_status status_line )],
+    },
+    'Apache2::Controller::X::Redirect' => { 
+        isa => 'Apache2::Controller::X',
+    },
+);
+
+=head1 METHODS
+
+=head2 Fields
+
+This is the Fields() method provided by L<Exception::Class>.
+
 =head1 SEE ALSO
 
-L<Exception::Class>,
+L<Exception::Class>
+
 L<Apache2::Controller>
 
 =head1 AUTHOR
 
-Mark Hedges, C<< <hedges at scriptdolphin.org> >>
+Mark Hedges, C<< <hedges ||at scriptdolphin.org> >>
 
 =head1 COPYRIGHT & LICENSE
 
@@ -118,13 +154,5 @@ under the same terms as Perl itself.
 
 =cut
 
-use Exception::Class (
-    'Apache2::Controller::X'           => { 
-        fields  => [qw( message dump http_status )],
-    },
-    'Apache2::Controller::X::Redirect' => { 
-        isa => 'Apache2::Controller::X',
-    },
-);
 
 1;

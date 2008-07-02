@@ -33,7 +33,7 @@ use Apache2::Const -compile => qw( OK );
 
 sub handler {
     my ($r) = @_;
-    $r->notes->{_a2c_connection_aborted} = $r->connection->aborted();
+    $r->notes->{connection_closed} = $r->connection->aborted();
     return Apache2::Const::OK;
 }
 

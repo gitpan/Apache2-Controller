@@ -14,6 +14,16 @@ Apache2::Controller::Directives - custom Apache2 server configuration directives
 
 =cut
 
+1;
+
+__END__
+
+=for comment
+
+this doesn't work
+
+=cut
+
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';

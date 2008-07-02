@@ -62,7 +62,10 @@ sub controller_allows_method {
 
     Apache2::Controller::X->throw("class undefined")  if !defined $class;
     Apache2::Controller::X->throw("method undefined") if !defined $method;
-    DEBUG("checking class '$class', method '$method'");
+    DEBUG(sub{
+        "checking class '$class', method '$method', allowed is:\n"
+        .Dump(\%allowed_methods)
+    });
 
     # check that the method is allowed.
     # make sure the selected method is allowed in the controller class
@@ -70,7 +73,11 @@ sub controller_allows_method {
     if (!exists $allowed_methods{$class}) {
 
         eval "require $class;";
-        my $isa_a2c; eval "\$isa_a2c = $class->isa('Apache2::Controller');";
+        Apache2::Controller::X->throw("cannot require $class: $EVAL_ERROR")
+            if $EVAL_ERROR;
+
+        my $isa_a2c; 
+        eval "\$isa_a2c = $class->isa('Apache2::Controller');";
         Apache2::Controller::X->throw("$class is not an Apache2::Controller")
             unless $isa_a2c;
 

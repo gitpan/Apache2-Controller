@@ -1,27 +1,24 @@
-#!/usr/bin/perl
+#!perl 
 
-use Test::More;
+use Test::More tests => 15;
 use blib;
 
-# Can't load Apache2::Controller::Directives outside of modperl environment
-
 BEGIN {
-    my @libs = qw(
-        Apache2::Controller::Auth::OpenID
-        Apache2::Controller::Const
-        Apache2::Controller::Dispatch::Simple
-        Apache2::Controller::Dispatch
-        Apache2::Controller::Funk
-        Apache2::Controller::Render::Template
-        Apache2::Controller::Session::Cookie
-        Apache2::Controller::Session
-        Apache2::Controller::Uploads
-        Apache2::Controller::X
-        Apache2::Controller
-    );
-
-    plan tests => scalar @libs;
-    use_ok($_) for @libs;
+    use_ok("Apache2::Controller");
+    use_ok("Apache2::Controller::Const");
+    use_ok("Apache2::Controller::Directives");
+    use_ok("Apache2::Controller::Dispatch");
+    use_ok("Apache2::Controller::Dispatch::Simple");
+    use_ok("Apache2::Controller::Funk");
+    use_ok("Apache2::Controller::HelpingHandlers::Log::DetectAbortedConnection");
+    use_ok("Apache2::Controller::Methods");
+    use_ok("Apache2::Controller::NonResponseBase");
+    use_ok("Apache2::Controller::Render::Template");
+    use_ok("Apache2::Controller::Session");
+    use_ok("Apache2::Controller::Session::Cookie");
+    use_ok("Apache2::Controller::SQL::MySQL");
+    use_ok("Apache2::Controller::Uploads");
+    use_ok("Apache2::Controller::X");
 }
 
 diag( "Testing Apache2::Controller $Apache2::Controller::VERSION, Perl $], $^X" );

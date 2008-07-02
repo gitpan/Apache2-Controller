@@ -43,7 +43,6 @@ my @requires = qw(
     Test::More
     URI
     URI::Escape
-    Version
     YAML::Syck
 );
 

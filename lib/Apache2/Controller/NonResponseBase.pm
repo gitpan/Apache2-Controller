@@ -43,6 +43,7 @@ use warnings;
 use English '-no_match_vars';
 
 use Log::Log4perl qw(:easy);
+use YAML::Syck;
 
 use Apache2::RequestRec ();
 use Apache2::RequestUtil ();
@@ -73,7 +74,7 @@ sub handler : method {
     if ($X = Exception::Class->caught('Apache2::Controller::X')) {
         if ($X->isa('Apache2::Controller::X::Redirect')) {
             $http_status = Apache2::Const::REDIRECT;
-            $r->err_headers_out(Location => "$X");
+            $r->err_headers_out->add(Location => "$X");
             DEBUG("redirecting to $X");
         }
         else {
@@ -113,6 +114,11 @@ C<<Apache2::RequestRec>> object to C<<$self->{r}>>.
 
 If the parent class defines a method C<init()>, this will
 be called at the end of object creation.
+
+Unlike L<Apache2::Controller>, the handler object of other handlers
+that use this package as a base do not create, delegate to and subclass
+the L<Apache2::Request> object.  They just keep the original 
+L<Apache2::RequestRec> object in C<<$self->{r}>>.
 
 =cut
 

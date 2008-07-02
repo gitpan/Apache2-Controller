@@ -13,7 +13,7 @@ use Readonly;
 use Apache2::Const -compile => qw(HTTP_OK);
 use Log::Log4perl qw(:easy);
 
-Readonly our @ALLOWED_METHODS => qw( default pie );
+Readonly our @ALLOWED_METHODS => qw( default pie process );
 
 sub default {
     my ($self) = @_;
@@ -29,5 +29,11 @@ sub pie {
     return Apache2::Const::HTTP_OK;
 }
 
+# test template process of relative files
+sub process {
+    my ($self) = @_;
+    $self->render();
+    return Apache2::Const::HTTP_OK;
+}
 
 1;

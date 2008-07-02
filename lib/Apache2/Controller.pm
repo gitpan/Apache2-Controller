@@ -2,18 +2,18 @@ package Apache2::Controller;
 
 =head1 NAME
 
-Apache2::Controller - lightweight OO framework for Apache2 handler apps
+Apache2::Controller - framework for Apache2 handler apps
 
 =head1 VERSION
 
-Version 0.01
+Version 0.0.2
 
 =cut
 
 use strict;
 use warnings FATAL => 'all', NONFATAL => 'redefine';
 
-our $VERSION = '0.0001';
+our $VERSION = '0.0002';
 
 =head1 SYNOPSIS
 
@@ -281,6 +281,13 @@ any refusal http_status greater or equal to 400 (HTTP_BAD_REQUEST)
 will be written to the access log with L<Apache2::Log> log_reason() 
 using the first few characters of the error.
 
+See L<Apache2::Controller::Session/ERRORS> for how to control
+whether or not a session is saved.  Usually it is automatically
+saved.  If you don't want it saved when you have an error
+in your controller, you'll have to use C<<eval>> and then
+set C<<$self->notes->{connection_closed}>> before you return
+the error code.
+
 =head1 CONTROLLER CLOSURES
 
 Apache2::Controller's package space structure lets you take advantage
@@ -324,6 +331,22 @@ do something like:
  Log::Log4perl->init(\$logconf);
 
 These settings will be cloned to every modperl child on fork.
+
+=head1 MVC
+
+Apache2::Controller provides the controller, mainly.  
+L<Apache2::Controller::Render::Template> is one example
+of a view that can be used as a second base with
+C<use base> in your controller module.  As for the Model
+part of Model-View-Controller, Apache2::Controller leaves
+that entirely up to you and does not force you to
+wrap anything in an abstraction class.  
+
+The C<handler()> subroutine is in your base class and your
+controller modules will be running from memory in the mod_perl
+child interpreter.  So,
+you can use package namespace effectively to store data
+that will persist in the mod_perl child across requests.
 
 =head1 WARNINGS AND CAVEATS
 
@@ -398,7 +421,8 @@ and the uri for recording in the access log.
 In the odd chance you plan to push further PerlResponseHandlers
 from your controller or server config, maybe to print
 debugging data at the end in HTML comments for instance, 
-then you need to set a boolean directive (temporarily an environment variable)
+then you need to set a boolean directive (temporarily a C<PerlSetVar>
+variable)
 called C<A2CRunAllResponseHandlers>. Then C<Apache2::Controller>
 will check Apache's stack of PerlResponseHandlers for the Response
 phase of the request lifecycle, to see whether you have pushed
@@ -427,7 +451,8 @@ sub handler : method {
 
         DEBUG("executing $class -> $method()");
         $http_status = $handler->$method();
-        $http_status = $handler->http_status() if !defined $http_status;
+      # $r->pnotes->{session} = $handler->{session} if exists $handler->{session};
+        $http_status = $handler->status() if !defined $http_status;
     };
     if ($X = $EVAL_ERROR) {
         my $ref = ref($X);
@@ -443,7 +468,7 @@ sub handler : method {
         # if a redirect, just set the location and status
         if ($ref && $X->isa('Apache2::Controller::X::Redirect')) {
             $http_status = Apache2::Const::REDIRECT;
-            $r->err_headers_out(Location => "$X");
+            $r->err_headers_out->add(Location => "$X");
         }
 
         # else process the error
@@ -451,17 +476,25 @@ sub handler : method {
 
             # if appropriate and able to call self->error(), do that now
             if ($handler && !$r->notes->{use_standard_errors}) {
-                $supports_error_method{$class} = $class->can('error')
-                    if !exists $supports_error_method{$class};
 
-                if ($supports_error_method{$class}) {
-                    eval { $handler->error($X); };
-                    $X = $EVAL_ERROR if $EVAL_ERROR;  # old $X encapsulated
+                eval {
+                    if (exists $supports_error_method{$class}) {
+                        $handler->error($X);
+                    } 
+                    elsif ($class->can('error')) {
+                        $handler->error($X); 
+                    }
+                };
+                if (my $tempX = Exception::Class->caught('Apache2::Controller::X')) {
+                    $X = $tempX;
+                }
+                elsif ($EVAL_ERROR) {
+                    $X = "$EVAL_ERROR";
                 }
             }
 
             # now decide how to output debugging log:
-            if ($ref && $X->isa('Apache2::Controller::X')) {
+            if (ref($X) && $X->isa('Apache2::Controller::X')) {
                 DEBUG(sub {
                     ref($X).": $X\n".($X->dump ? Dump($X->dump) : '').$X->trace()
                 });
@@ -469,7 +502,7 @@ sub handler : method {
             else {
                 DEBUG("Caught an unknown error: $X");
             }
-            warn "Error caught in Apache2::Controller::handler: $X\n";
+            INFO("Error caught in Apache2::Controller::handler: $X\n");
         }
     }
 
@@ -511,8 +544,11 @@ sub handler : method {
         return Apache2::Const::OK;
     }
 
-    # supposedly you can return the http status, but it doesn't work right.
-    # i prefer to directly control what is happening.
+    # supposedly you can return the http status, but it doesn't work right
+    # if you return HTTP_OK.  shouldn't it?
+    # i prefer to directly control what is happening
+    # by setting the status and then telling Apache whether
+    # to continue or to stop processing the request if not.
 }
 
 =head2 MyApp::C::ControllerSubclass->new( Apache2::RequestRec object )
@@ -585,6 +621,14 @@ sub new {
     $self->{method}      = $method;
     $self->{path_args}   = $pnotes->{path_args};
     $self->{remote_addr} = $notes->{remote_addr};
+
+    # don't instantiate the 'session' key of $self unless it's implemented
+    # in some earlier stage of the apache lifecycle.
+    my $session = $pnotes->{session};
+    if ($session) {
+        $self->{session} = $session;
+        DEBUG(sub{"found and attached session to controller self:\n".Dump($session)});
+    }
 
     DEBUG(sub { Dump({
         map {($_ => $self->{$_} ? "$self->{$_}" : '[undef]')} keys %$self 
@@ -684,6 +728,10 @@ they should add a line to call a shared cleanup method.
      return;
  }
 
+Or better yet...
+
+ package MyApp::Cleanup;
+
 There is no need for a predefined method sequence that
 tries to run for each request, because Apache2 already
 provides a robust abstraction of the request lifecycle
@@ -695,6 +743,13 @@ time without having to remember that C<< $self->cleanup() >> line
 for each new
 method, overload the constructor as per L<subclassing new( )> above 
 and register a PerlCleanupHandler for every request instead.
+
+Otherwise the framework ends up doing a lot of work every time
+to ask, "did they implement this?  did they implement that?"
+and that gets in your way, or you have to write those routines
+every time even if they don't do anything, or whatever.  Bleah.
+Implement what you want to implement from the controller methods.
+The framework won't provide you with any more structure.
 
 =head1 SEE ALSO
 

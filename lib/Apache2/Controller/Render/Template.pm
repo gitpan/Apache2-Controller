@@ -16,7 +16,6 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
  # looks for templates in /var/myapp/templates/foo/
  <Location /foo>
     SetHandler modperl
-    PerlOptions +SetupEnv
     PerlInitHandler MyApp::Dispatch::Foo
  </Location>
 
@@ -78,8 +77,10 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
 This module provides a nice rendering mechanism for Apache2::Controller.
 
-=head1 METHODS
+=head1 STASH FUNCTIONS
 
+Several subroutine references are automatically included
+in the stash for ease of use.
 
 =cut
 
@@ -98,19 +99,28 @@ use HTML::Entities;
 use HTTP::Status qw( status_message );
 use Log::Log4perl qw( :easy );
 
-my $tt = Template->new({
-    INTERPOLATE     => 1,
-    ABSOLUTE        => 1,
-    RELATIVE        => 0,
-  # DEBUG           => 'all',
-}) || die $Template::ERROR;
+=head2 escape_html
+
+Escape '<' and '>' characters using L<HTML::Entities>.
+
+=cut
 
 sub escape_html {
     my @strings = @_; # clone, don't modify
     return map encode_entities($_, '<>'), @strings;
 }
 
-sub assign_tt_functions {
+=head2 uri_escape
+
+See L<URI::Escape>.
+
+=head2 Dump
+
+See L<YAML::Syck>.
+
+=cut
+
+sub _assign_tt_functions {
     my ($self) = @_;
     $self->{stash}{escape_html} = \&escape_html;
     $self->{stash}{uri_escape}  = \&uri_escape;
@@ -118,7 +128,7 @@ sub assign_tt_functions {
     return;
 }
 
-sub assign_tt_stash_data {
+sub _assign_tt_stash_data {
     my ($self) = @_;
     $self->{stash}{path_args}   = $self->{path_args};
     $self->{stash}{method}      = $self->{method};
@@ -126,14 +136,9 @@ sub assign_tt_stash_data {
     return;
 }
 
-my $incpath;
-sub incpath_generator {
-    Apache2::Controller::X->throw("no incpath set for incpath_generator()")
-        if !defined $incpath;
-    return ref $incpath ? $incpath : [ $incpath ];
-}
+=head1 METHODS
 
-=head2 render()
+=head2 render
 
 render() accumulates template output into a variable
 before printing, so it may use a lot of memory
@@ -150,13 +155,14 @@ sub render {
 
     DEBUG("beginning render()");
 
-    my $template = $self->template();
+    my $tt = $self->get_tt_obj();
+    my $template = $self->detect_template();
     DEBUG("processing template = '$template'");
 
   # DEBUG(sub { Dump($self->{stash}) });
 
-    $self->assign_tt_functions();
-    $self->assign_tt_stash_data();
+    $self->_assign_tt_functions();
+    $self->_assign_tt_stash_data();
 
     # assimilate output to a scalar 
     my $output;
@@ -168,7 +174,7 @@ sub render {
     return;
 }
 
-=head2 render_fast()
+=head2 render_fast
 
 So if you are planning to get a large
 data set, you probably want to use $self->render_fast()
@@ -196,13 +202,14 @@ sub render_fast {
 
     $self->notes->{use_standard_errors} = 1;
 
-    my $template = $self->template();
+    my $template = $self->detect_template();
     DEBUG("processing template = '$template'");
 
   # DEBUG(sub { Dump($self->{stash}) });
 
-    $self->assign_tt_functions();
+    $self->_assign_tt_functions();
 
+    my $tt = $self->get_tt_obj();
     # pass Apache2::Request object to print directly.
     $tt->process($template, $self->{stash}, $self->{r}) 
         || Apache2::Controller::X->throw($tt->error());
@@ -210,28 +217,28 @@ sub render_fast {
     return;
 }
 
-=head2 error()
+=head2 error
 
 If your template directory contains a subdirectory named 'error', 
 then when the controller throws an exception, the exception object will
 be passed to a selected error template as 'X' in the stash.  It also
-sets http_status (number) and status_message 
-(from HTTP::Status::status_message()).
+sets http_status (number) and status_line 
+(from HTTP::Status::status_message() or from the values 
+set in the L<Apache2::Controller::X> exception).
 
-If you have a template $template_dir/error/$status_message.html, 
-where $status_message is the result of 
-C<HTTP::Status::status_message( $http_status_code )>
-with spaces and -'s translated to _'s, then it will use that template.
+If you have a template $template_dir/error/$status.html, 
+where $status is the numeric http status code,
+then it will use that template.
 
 For example:
 
- 203 HTTP_NON_AUTHORITATIVE     => error/Non_Authoritative_Information.html
- 400 HTTP_BAD_REQUEST           => error/Bad_Request.html
- 404 NOT_FOUND                  => error/Not_Found.html
- 500 HTTP_INTERNAL_SERVER_ERROR => error/Internal_Server_Error.html
+ 203 HTTP_NON_AUTHORITATIVE     => error/203.html
+ 400 HTTP_BAD_REQUEST           => error/400.html
+ 404 NOT_FOUND                  => error/404.html
+ 500 HTTP_INTERNAL_SERVER_ERROR => error/500.html
 
-For example, C<$template_dir/error/Bad_Request.html> or 
-C<$template_dir/error/Forbidden.html>.
+For example, C<$template_dir/error/400.html> or 
+C<$template_dir/error/403.html>.
 
 Otherwise it will look for $template_dir/error/default.html and 
 try to use that, otherwise it will give up.
@@ -244,7 +251,8 @@ For a reference list of http_status and messages, see Apache2::Controller.
 
 Since render_fast() is incompatible if a template rendering error 
 occurs, render_fast() turns off the use of error() and relies on 
-standard Apache2 error messages.
+standard Apache2 error messages (or the custom message set in 
+the exception object) and relies on the browser to display them.
 
 =cut
 
@@ -253,27 +261,27 @@ my %error_templates = ( );
 sub error {
     my ($self, $X) = @_;
 
-    my $http_status;
+    my ($http_status, $status_line);
 
     DEBUG("original error: '$X'");
 
     if (ref($X) && $X->isa('Apache2::Controller::X')) {
         $http_status = $X->http_status;
-    }
-    else {
-        $http_status = $self->{r}->status();
+        $status_line = $X->status_line;
+        DEBUG("got status from \$X: ".($http_status || '[none]'));
     }
     $http_status ||= Apache2::Const::SERVER_ERROR;
+    $status_line ||= status_message($http_status);
 
-    my $status_message = status_message($http_status);
-    (my $status_file = $status_message) =~ s{ [\s\-] }{_}mxsg;
-    DEBUG("status msg for file name: '$status_file'");
+    my $status_file = $http_status;
+    DEBUG("status msg for $status_file: '$status_line'");
 
     $self->{stash}{X} = $X;
-    $self->{stash}{status_message} = $status_message;
-    $self->{stash}{http_status}    = $http_status;
+    $self->{stash}{status_line} = $status_line;
+    $self->{stash}{http_status} = $http_status;
 
-    my $template_dir = $self->get_directive('A2CRenderTemplateDir');
+    my $template_dir = $self->get_directive('A2CRenderTemplateDir')
+        || Apache2::Controller::X->throw('A2CRenderTemplateDir not defined.');
     if (exists $error_templates{$template_dir}{$status_file}) {
 
         my $template = $error_templates{$template_dir}{$status_file};
@@ -295,54 +303,51 @@ sub error {
         $self->render();
     }
     else {
+        # does the error directory even exist?
+
         # first try the appropriately named file:
+        my %try_errors = ( );
         $self->{template} = "errors/$status_file.html";
         eval { $self->render() };
-        my %try_errors = ( );
 
         # if got an error using that file name, try the default error file:
-        if ($try_errors{$self->{template}} = "$EVAL_ERROR") {
+        if ($EVAL_ERROR) {
+            $try_errors{$self->{template}} = "$EVAL_ERROR";
             $self->{template} = "errors/default.html";
             eval { $self->render() };
 
-            # and if error template doesn't work, throw back merged errors
-            if ($try_errors{$self->{template}} = "$EVAL_ERROR") {
+            # and if error template doesn't work, throw back original error
+            if ($EVAL_ERROR) {
+                $try_errors{$self->{template}} = "$EVAL_ERROR";
                 $error_templates{$template_dir}{$status_file} = undef;
-                if ($X->isa('Exception::Class::Base')) {
-                    if ($X->isa('Apache2::Controller::X')) {
-                        my $dump = $X->dump();
-                        $dump = $dump
-                            ? { initial_error_dump => $dump, %try_errors }
-                            : { %try_errors };
-                        my $trace = $X->trace();
-                        $dump->{initial_error_trace} = "$trace";
-                        $X->{dump} = $dump;
-                    }
+                if ($X->isa('Apache2::Controller::X')) {
                     $X->rethrow();
                 }
                 else {
-                    my $dump = { initial_error => "$X", %try_errors };
-                    $dump->{exception_reftype} = ref $X;
+                    my $dump = { tries => \%try_errors, reftype => ref $X };
                     Apache2::Controller::X->throw(
-                        message => "Cannot process any error template "
-                                .  "for $http_status $status_file.",
-                        dump    => $dump,
+                        message     => "GOMBOR $X",
+                        http_status => $http_status,
+                        status_line => $status_line,
+                        'dump'      => $dump,
                     );
                 }
             }
         }
+
+        # after finding the right template for code, remember it for next time
         $error_templates{$template_dir}{$status_file} = $self->{template};
     }
     return;
 }
 
-=head2 template()
+=head2 detect_template
 
 This is called internally by the render methods, but you can use
 it to figure out the default template from where you are.
 
 To override the auto-select template, just set $self->{template}
-before you render.
+before you call C<<render()>>.
 
 It looks for templates in a computed directory.  The directory where it
 looks will always be the directory set with the A2CRenderTemplateDir 
@@ -386,19 +391,52 @@ See Apache2::Controller::Dispatch::Simple.
 
 =cut
 
-sub template {
+sub detect_template {
     my ($self) = @_;
 
-    if ($self->{template}) {
+    if (exists $self->{template}) {
         DEBUG("have a template already, returning $self->{template}");
         return $self->{template};
     }
 
+    (my $rel_uri = $self->notes->{relative_uri}) =~ s{ \A / }{}mxs;
+    Apache2::Controller::X->throw('notes->{relative_uri} not set')
+        if !defined $rel_uri;
+
+    my $file = "$self->{method}.html";
+
+    my $template 
+        = $rel_uri
+        ? File::Spec->catfile( $rel_uri, $file )
+        : $file;
+
+    Apache2::Controller::X->throw("bad template path $_")
+        if $template =~ m{ \.\. / }mxs;
+
+    DEBUG("Detected self->{template} to be '$template'");
+
+    $self->{template} = $template;
+    return $template;
+}
+
+=head2 detect_template_include_dir
+
+Like C<<detect_template()>>, this detects the appropriate include
+directory for the template toolkit object, sets it as 
+C<<$self->{template_include_dir}>> and returns it.
+
+=cut
+
+sub detect_template_include_dir {
+    my ($self) = @_;
+
+    return $self->{template_include_dir} if $self->{template_include_dir};
+
     my $template_dir = $self->get_directive('A2CRenderTemplateDir')
         || Apache2::Controller::X->throw("A2CRenderTemplateDir not defined");
 
-    my $loc = $self->location();
-    DEBUG("so far have '$template_dir/$loc'");
+    (my $loc = $self->location()) =~ s{ \A / }{}mxs;
+    DEBUG("so far have '$template_dir' / '$loc'");
     my $uri = $self->uri();
 
     DEBUG(sub{Dump({
@@ -407,25 +445,63 @@ sub template {
         template_dir => $template_dir,
     })});
 
-    my $rel_uri = $self->notes->{relative_uri};
-    Apache2::Controller::X->throw('notes->{relative_uri} not set')
-        if !defined $rel_uri;
-
-    my $template = File::Spec->catfile(
+    my $dir = $self->{template_include_dir} = File::Spec->catfile(
         $template_dir,
         $loc,
-        $rel_uri,
-        $self->{method}.'.html',
     );
 
-    Apache2::Controller::X->throw("bad template path $template")
-        if $template =~ m{ \.\. / }mxs;
-
-    DEBUG("Detected self->{template} to be '$template'");
-
-    $self->{template} = $template;
-
-    return $template;
+    return $dir;
 }
+
+=head2 get_tt_obj
+
+Get the L<Template> object set up with the appropriate include directory
+from C<<detect_template_include_dir()>>.
+
+=cut
+
+my %tts = ();
+sub get_tt_obj {
+    my ($self) = @_;
+    my $include_dir = $self->detect_template_include_dir();
+
+    return $tts{$include_dir} if exists $tts{$include_dir};
+
+    DEBUG("using include_dir '$include_dir' to set up a new TT object");
+
+    my $tt = Template->new({
+        INCLUDE_PATH    => $include_dir,
+        INTERPOLATE     => 1,
+        ABSOLUTE        => 0,
+        RELATIVE        => 1,
+    # DEBUG           => 'all',
+    }) || die $Template::ERROR;
+
+    $tts{$include_dir} = $tt;
+
+    return $tt;
+}
+
+=head1 SEE ALSO
+
+L<Apache2::Controller>
+
+L<Apache2::Controller::Render::Template>
+
+L<Apache2::Controller::X>
+
+=head1 AUTHOR
+
+Mark Hedges, C<< <hedges at--! scriptdolphin.org> >>
+
+=head1 COPYRIGHT & LICENSE
+
+Copyright 2008 Mark Hedges, all rights reserved.
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+=cut
+
 
 1;

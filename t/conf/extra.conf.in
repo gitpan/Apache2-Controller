@@ -17,7 +17,7 @@ PerlModule Apache2::Cookie
 PerlModule Apache2::RequestIO
 
 #PerlLoadModule Apache2::Controller::Directives
-PerlSetEnv A2CRenderTemplateDir @ServerRoot@/templates
+PerlSetVar A2CRenderTemplateDir @ServerRoot@/templates
 
 PerlModule TestApp::Simple::Dispatch
 PerlModule TestApp::Render::Dispatch
@@ -25,13 +25,22 @@ PerlModule TestApp::Render::Dispatch
 # preload the module
 <Location /simple>
     SetHandler modperl
-    PerlOptions +SetupEnv
     PerlInitHandler TestApp::Simple::Dispatch
 </Location>
 
 <Location /render>
     SetHandler modperl
-    PerlOptions +SetupEnv
     PerlInitHandler TestApp::Render::Dispatch
 </Location>
+
+PerlModule TestApp::Session::Session
+<Location /session>
+    SetHandler modperl
+    PerlInitHandler TestApp::Session::Dispatch
+
+    # in theory my testapp get_options should detect system-appropriate tempdirs
+    PerlSetVar  A2CSessionCookieName    testapp_sessid
+    PerlHeaderParserHandler             TestApp::Session::Session
+</Location>
+
 

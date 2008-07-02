@@ -8,7 +8,6 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
 
  <Location /subdir>
      SetHandler modperl
-     PerlOptions +SetupEnv
      PerlInitHandler MyApp::Dispatch
  </Location>
 
@@ -82,9 +81,7 @@ In the example above for notes->{relative_uri}, this is [ 'biz', 'zip' ].
 dispatch map contains the URI 'foo', and the incoming URI was '/foo/bar/baz',
 then $r->pnotes->{path_args} should be ['bar', 'baz'] before returning.
 
-=head1 SEE ALSO
-
-Apache2::Controller::Dispatch
+=head1 METHODS
 
 =cut
 
@@ -102,8 +99,8 @@ my %dispatch_maps   = ( );
 my %search_uris     = ( );
 my %uri_lengths     = ( );
 
-# return, for the class, the dispatch_map hash, uri_length map, and search uri list
-sub get_class_info {
+# return, for the class, the dispatch_map hash, uri_length map, & search uri list
+sub _get_class_info {
     my ($self) = @_;
     my $class = $self->{class};
     my ($dispatch_map, $uri_length_map, $search_uri_list) = ();
@@ -138,13 +135,20 @@ sub get_class_info {
     return ($dispatch_map, $uri_length_map, $search_uri_list);
 }
 
+=head2 find_controller
+
+Find the controller and method for a given URI from the data
+set in the dispatch class module.
+
+=cut
+
 sub find_controller {
     my ($self) = @_;
 
     my $class = $self->{class};
 
     my ($dispatch_map, $uri_length_map, $search_uri_list) 
-        = $self->get_class_info();
+        = $self->_get_class_info();
 
     # figure out what most-specific path matches this URI.
     my $r = $self->{r};
@@ -154,7 +158,6 @@ sub find_controller {
         uri             => $uri,
         location        => $location,
     })});
-    DEBUG(sub{Dump(\%ENV)});
 
     $uri = substr $uri, length $location;
 
@@ -272,5 +275,25 @@ sub find_controller {
 
     return $controller;
 }
+
+=head1 SEE ALSO
+
+L<Apache2::Controller::Dispatch>
+
+L<Apache2::Controller>
+
+=head1 AUTHOR
+
+Mark Hedges, C<hedges +(a t)| scriptdolphin.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2008 Mark Hedges.  CPAN: markle
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
+
+=cut
+
 
 1;
