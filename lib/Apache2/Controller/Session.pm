@@ -292,7 +292,7 @@ sub process {
     # push state detection handler to last phase that connection is open,
     # since the connection gets closed before PerlCleanupHandler
     my $helperdetect 
-        = 'Apache2::Controller::HelpingHandlers::Log::DetectAbortedConnection';
+        = 'Apache2::Controller::Log::DetectAbortedConnection';
     DEBUG("Pushing $helperdetect");
     $r->push_handlers(PerlLogHandler => $helperdetect);
 

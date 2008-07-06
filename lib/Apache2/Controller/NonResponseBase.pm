@@ -65,7 +65,7 @@ sub handler : method {
 
     DEBUG("begin $class ->handler()");
 
-    my ($handler, $http_status, $X) = ( );
+    my ($handler, $status, $X) = ( );
 
     eval { 
         $handler = $class->new($r);
@@ -73,32 +73,32 @@ sub handler : method {
     };
     if ($X = Exception::Class->caught('Apache2::Controller::X')) {
         if ($X->isa('Apache2::Controller::X::Redirect')) {
-            $http_status = Apache2::Const::REDIRECT;
+            $status = Apache2::Const::REDIRECT;
             $r->err_headers_out->add(Location => "$X");
             DEBUG("redirecting to $X");
         }
         else {
-            $http_status = $X->http_status || Apache2::Const::SERVER_ERROR;
-            DEBUG("Caught an Apache2::Controller::X: $http_status");
+            $status = $X->status || Apache2::Const::SERVER_ERROR;
+            DEBUG("Caught an Apache2::Controller::X: $status");
             DEBUG(ref($X).": $X\n".($X->dump ? Dump($X->dump) : '').$X->trace());
         }
     }
     elsif ($X = $EVAL_ERROR) {
         DEBUG("Caught an unknown error: $X");
-        $http_status = Apache2::Const::SERVER_ERROR;
+        $status = Apache2::Const::SERVER_ERROR;
     }
 
-    if ($http_status) {
-        DEBUG("Setting http-status to '$http_status'");
-        $r->status($http_status);
+    if ($status) {
+        DEBUG("Setting http-status to '$status'");
+        $r->status($status);
     }
 
-    if ($http_status && $http_status >= Apache2::Const::HTTP_BAD_REQUEST) {
+    if ($status && $status >= Apache2::Const::HTTP_BAD_REQUEST) {
         DEBUG("logging bad request");
         log_bad_request_reason($r, $X);
         return Apache2::Const::DONE;  # stop processing further handlers
     }
-    elsif ($http_status && $http_status == Apache2::Const::REDIRECT) {
+    elsif ($status && $status == Apache2::Const::REDIRECT) {
         return Apache2::Const::DONE;
     }
     else {

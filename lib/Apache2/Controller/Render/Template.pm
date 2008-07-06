@@ -222,7 +222,7 @@ sub render_fast {
 If your template directory contains a subdirectory named 'error', 
 then when the controller throws an exception, the exception object will
 be passed to a selected error template as 'X' in the stash.  It also
-sets http_status (number) and status_line 
+sets status (number) and status_line 
 (from HTTP::Status::status_message() or from the values 
 set in the L<Apache2::Controller::X> exception).
 
@@ -247,7 +247,7 @@ error() remembers across requests whether you do or don't have
 error templates for certain messages in the appropriate template directory,
 so it will be faster the second time around if you use error/default.html.
 
-For a reference list of http_status and messages, see Apache2::Controller.
+For a reference list of status and messages, see Apache2::Controller.
 
 Since render_fast() is incompatible if a template rendering error 
 occurs, render_fast() turns off the use of error() and relies on 
@@ -261,24 +261,24 @@ my %error_templates = ( );
 sub error {
     my ($self, $X) = @_;
 
-    my ($http_status, $status_line);
+    my ($status, $status_line);
 
     DEBUG("original error: '$X'");
 
     if (ref($X) && $X->isa('Apache2::Controller::X')) {
-        $http_status = $X->http_status;
+        $status = $X->status;
         $status_line = $X->status_line;
-        DEBUG("got status from \$X: ".($http_status || '[none]'));
+        DEBUG("got status from \$X: ".($status || '[none]'));
     }
-    $http_status ||= Apache2::Const::SERVER_ERROR;
-    $status_line ||= status_message($http_status);
+    $status ||= Apache2::Const::SERVER_ERROR;
+    $status_line ||= status_message($status);
 
-    my $status_file = $http_status;
+    my $status_file = $status;
     DEBUG("status msg for $status_file: '$status_line'");
 
     $self->{stash}{X} = $X;
     $self->{stash}{status_line} = $status_line;
-    $self->{stash}{http_status} = $http_status;
+    $self->{stash}{status} = $status;
 
     my $template_dir = $self->get_directive('A2CRenderTemplateDir')
         || Apache2::Controller::X->throw('A2CRenderTemplateDir not defined.');
@@ -320,14 +320,14 @@ sub error {
             if ($EVAL_ERROR) {
                 $try_errors{$self->{template}} = "$EVAL_ERROR";
                 $error_templates{$template_dir}{$status_file} = undef;
-                if ($X->isa('Apache2::Controller::X')) {
+                if (ref $X && $X->isa('Apache2::Controller::X')) {
                     $X->rethrow();
                 }
                 else {
                     my $dump = { tries => \%try_errors, reftype => ref $X };
                     Apache2::Controller::X->throw(
-                        message     => "GOMBOR $X",
-                        http_status => $http_status,
+                        message     => "$X",
+                        status => $status,
                         status_line => $status_line,
                         'dump'      => $dump,
                     );
@@ -399,16 +399,31 @@ sub detect_template {
         return $self->{template};
     }
 
+    my $loc = $self->location();
+
+    # trim leading and trailing /'s
+    $loc = '' if $loc eq '/';
+    if ($loc) {
+        $loc = substr($loc, 1) if length $loc > 1 && substr($loc, 0, 1) eq '/';
+        substr($loc, -1, 1, '') if substr($loc, -1) eq '/';
+    }
+
     (my $rel_uri = $self->notes->{relative_uri}) =~ s{ \A / }{}mxs;
     Apache2::Controller::X->throw('notes->{relative_uri} not set')
         if !defined $rel_uri;
 
     my $file = "$self->{method}.html";
 
+    DEBUG(sub{Dump({
+        loc         => $loc,
+        rel_uri     => $rel_uri,
+        file        => $file,
+    })});
+
     my $template 
         = $rel_uri
-        ? File::Spec->catfile( $rel_uri, $file )
-        : $file;
+        ? File::Spec->catfile( $loc, $rel_uri, $file )
+        : File::Spec->catfile( $loc, $file );
 
     Apache2::Controller::X->throw("bad template path $_")
         if $template =~ m{ \.\. / }mxs;
@@ -419,34 +434,44 @@ sub detect_template {
     return $template;
 }
 
-=head2 detect_template_include_dir
+=head2 detect_template_include_path
 
 Like C<<detect_template()>>, this detects the appropriate include
-directory for the template toolkit object, sets it as 
-C<<$self->{template_include_dir}>> and returns it.
+path for the template toolkit object, sets it as 
+C<<$self->{template_include_path}>> and returns it.
+
+This is the directive A2CRenderTemplateDir plus the C<< <Location> >>.
+So if you set up your handler to process everything under location /render,
+and A2CRenderTemplateDir was /var/www/mytemplates, the include_path
+used for the TT object would be /var/www/mytemplates/render/.
 
 =cut
 
-sub detect_template_include_dir {
+sub detect_template_include_path {
     my ($self) = @_;
 
-    return $self->{template_include_dir} if $self->{template_include_dir};
+    return $self->{template_include_path} if $self->{template_include_path};
 
-    my $template_dir = $self->get_directive('A2CRenderTemplateDir')
+    my $template_path = $self->get_directive('A2CRenderTemplateDir')
         || Apache2::Controller::X->throw("A2CRenderTemplateDir not defined");
 
-    (my $loc = $self->location()) =~ s{ \A / }{}mxs;
-    DEBUG("so far have '$template_dir' / '$loc'");
-    my $uri = $self->uri();
+    my $loc = $self->location();
+
+    # trim leading and trailing /'s
+    $loc = '' if $loc eq '/';
+    if ($loc) {
+        $loc = substr($loc, 1) if length $loc > 1 && substr($loc, 0, 1) eq '/';
+        substr($loc, -1, 1, '') if substr($loc, -1) eq '/';
+    }
+    DEBUG("so far have '$template_path' / '$loc'");
 
     DEBUG(sub{Dump({
         loc     => $loc,
-        uri     => $uri,
-        template_dir => $template_dir,
+        template_path => $template_path,
     })});
 
-    my $dir = $self->{template_include_dir} = File::Spec->catfile(
-        $template_dir,
+    my $dir = $self->{template_include_path} = File::Spec->catfile(
+        $template_path,
         $loc,
     );
 
@@ -456,28 +481,42 @@ sub detect_template_include_dir {
 =head2 get_tt_obj
 
 Get the L<Template> object set up with the appropriate include directory
-from C<<detect_template_include_dir()>>.
+set from the directive C<<A2CRenderTemplateDir>>.
+
+Directive C<A2CRenderTemplateOpts> sets default C<new()>
+options for L<Template>.  
 
 =cut
 
 my %tts = ();
 sub get_tt_obj {
     my ($self) = @_;
-    my $include_dir = $self->detect_template_include_dir();
+  # my $include_path = $self->detect_template_include_path();
 
-    return $tts{$include_dir} if exists $tts{$include_dir};
+    my $include_path = $self->get_directive('A2CRenderTemplateDir')
+        || Apache2::Controller::X->throw("A2CRenderTemplateDir not defined");
 
-    DEBUG("using include_dir '$include_dir' to set up a new TT object");
+    return $tts{$include_path} if exists $tts{$include_path};
 
-    my $tt = Template->new({
-        INCLUDE_PATH    => $include_dir,
-        INTERPOLATE     => 1,
-        ABSOLUTE        => 0,
-        RELATIVE        => 1,
-    # DEBUG           => 'all',
-    }) || die $Template::ERROR;
+    DEBUG("using include_path '$include_path' to set up a new TT object");
 
-    $tts{$include_dir} = $tt;
+    my %opts = %{ $self->get_directive('A2CRenderTemplateOpts') || { } };
+    $opts{INCLUDE_PATH} 
+        = !$opts{INCLUDE_PATH}    ? $include_path
+        : ref $opts{INCLUDE_PATH} ? [@{$opts{INCLUDE_PATH}}, $include_path]
+        :                           [$opts{INCLUDE_PATH}, $include_path];
+
+  # $opts{DEBUG} = 'all';   # turn on if L4P set to DEBUG here??
+
+    DEBUG(sub{"using opts for new TT on $include_path:\n".Dump(\%opts)});
+
+    my $tt;
+    
+    eval { $tt = Template->new(\%opts) || die $Template::ERROR."\n" };
+    Apache2::Controller::X->throw("No TT for $include_path: $EVAL_ERROR") 
+        if $EVAL_ERROR;
+
+    $tts{$include_path} = $tt;
 
     return $tt;
 }

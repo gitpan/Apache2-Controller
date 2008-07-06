@@ -10,25 +10,36 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 use Apache2::Controller::Test::Funk qw( diag );
 use YAML::Syck;
+use URI::Escape;
+
+my @CHARS = ('A'..'Z', 'a'..'z', 0 .. 9);
+my %TD = (
+    foo     => {
+        boz     => [qw( noz schnoz )]
+    },
+    bar     => 'biz',
+    floobie => join('', map $CHARS[int(rand @CHARS)], 1 .. 50),
+);
+my $testdata_dump = Dump(\%TD);
 
 plan tests => 2, need_lwp;
 Apache::TestRequest::user_agent(cookie_jar => {});
 
 use TestApp::Session::Controller;
-my %testdata = %TestApp::Session::Controller::testdata;
 
 my $url = "/session";
 
-my $response = GET_BODY "$url/set";
+my $get = "$url/set?data=".uri_escape($testdata_dump);
+my $response = GET_BODY $get;
 
-diag($response);
+diag("$get:\n".GET_STR $get);
 
-ok t_cmp("Set session data.\n", $response, "Set data.");
+ok t_cmp($response, "Set session data.\n", "Set data.");
 
 $response = GET_BODY "$url/read";
 diag($response);
 my $session = Load($response);
 my $response_testdata = $session->{testdata};
 
-ok t_cmp(Dump($response_testdata), Dump(\%testdata), "Read data.");
+ok t_cmp(Dump($response_testdata), $testdata_dump, "Read data.");
 

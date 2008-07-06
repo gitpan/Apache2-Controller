@@ -1,3 +1,4 @@
+.cvsignore
 Changes
 MANIFEST
 Makefile.PL
@@ -7,7 +8,7 @@ lib/Apache2/Controller/Directives.pm
 lib/Apache2/Controller/Dispatch/Simple.pm
 lib/Apache2/Controller/Dispatch.pm
 lib/Apache2/Controller/Funk.pm
-lib/Apache2/Controller/HelpingHandlers/Log/DetectAbortedConnection.pm
+lib/Apache2/Controller/Log/DetectAbortedConnection.pm
 lib/Apache2/Controller/Methods.pm
 lib/Apache2/Controller/NonResponseBase.pm
 lib/Apache2/Controller/Refcard.pm
@@ -38,8 +39,8 @@ t/session.t
 t/templates/render/default.html
 t/templates/render/foo/bar.html
 t/templates/render/foo/default.html
+t/templates/render/process/include.html
 t/templates/render/process.html
-t/templates/render/process_include.html
 t_future/pod.t
 util/apache2_http_response_reference_list.pl
 worklib/OpenID.pm

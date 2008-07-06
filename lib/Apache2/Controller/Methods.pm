@@ -33,7 +33,6 @@ use English '-no_match_vars';
 
 use Apache2::Controller::X;
 use Apache2::Cookie;
-use Apache2::Request;
 use YAML::Syck;
 use Log::Log4perl qw( :easy );
 
@@ -73,6 +72,9 @@ sub get_directives {
         "Apache2::Controller::Directives: (@directive_keys)\n"
         .Dump({ map {($_ => $directives->{$_})} @directive_keys });
     });
+
+    # i think i should ditch PerlSetVar altogether when directives work,
+    # it is too slow to ask for everytime right?  hrmmm.
 
     my $dir_config = $r->dir_config();
     my @all_setvars = keys %{$dir_config};
@@ -158,21 +160,6 @@ Fetches cookies with Apache2::Cookie::Jar.  Caches them in
 C<<$self->pnotes->{cookie_jar}>> for the duration of the request.
 Further calls to get_cookie_jar() from any handler will return the
 same jar without re-parsing them.
-
-=for comment
-
-probably not....
-
-If C<<$self>> is not an L<Apache2::Request>,
-the request object will be created temporarily to pass to 
-L<Apache2::Cookie::Jar>.  The man page for L<Apache2::Request>
-says that in version 2.2 of Apache, at any rate, this is always
-the same object during the lifecycle of a request.  
-But we use the 'instance' method here if necessary to create it.
-Your mileage may vary.
-
-because the only thing passed on is the pool from the obj,
-and Jar's delegate says it takes a RequestRec
 
 =cut
 

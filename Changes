@@ -1,5 +1,10 @@
 Revision history for Apache2-Controller
 
+0.0.3   2008-07-06T00:08:00
+        Changed render to always use A2CRenderTemplateDir as INCLUDE_PATH.
+        Various and sundry updates.  Trying to get Directives to work.
+        Bleah.
+
 0.0.2   2008-07-02T00:08:00
         Woo-hoo!  Rendering and sessions work.  More tests.
 

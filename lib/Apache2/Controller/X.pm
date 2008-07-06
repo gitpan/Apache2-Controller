@@ -38,7 +38,7 @@ Apache2::Controller::X - Exception::Class hierarchy for Apache2::Controller
  sub page_controller_method {
      MyApp::X->throw(
           message => q{ You're not supposed to be here. },
-          http_status => Apache2::Const::FORBIDDEN,
+          status => Apache2::Const::FORBIDDEN,
           dump => {
             this    => q{structure will get YAML::Syck::Dump'd},
             that    => [qw( to the error log )],
@@ -68,24 +68,24 @@ field, which is displayed when the object is referred to in string context.
      warn $X->trace;
  }
 
-=head2 http_status
+=head2 status
 
 This can be set to an L<Apache2::Const/:http> constant, which
-will then be set as the http_status for the request.
+will then be set as the status for the request.
 
  Apache2::Controller::X->throw(
      message => "oh no!",
-     http_status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR,
+     status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR,
  );
 
 =head2 status_line
 
-Combined with http_status, when intercepted by L<Apache2::Controller/handler>
+Combined with status, when intercepted by L<Apache2::Controller/handler>
 this sets a custom message with L<Apache2::RequestRec/status_line>.
 
  Apache2::Controller::X->throw(
      message => "Warp injection coil failure in unit 3-A-73",
-     http_status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR,
+     status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR,
      status_line => "Turbulence ahead. Please buckle your safety belts.",
  );
 
@@ -122,7 +122,7 @@ $self->internal_redirect() inherited from Apache2::SubRequest.
 
 use Exception::Class (
     'Apache2::Controller::X'           => { 
-        fields  => [qw( message dump http_status status_line )],
+        fields  => [qw( message dump status status_line )],
     },
     'Apache2::Controller::X::Redirect' => { 
         isa => 'Apache2::Controller::X',

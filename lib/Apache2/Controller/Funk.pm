@@ -115,7 +115,7 @@ sub check_allowed_method {
         DEBUG("Method $method not allowed in $class.");
         Apache2::Controller::X->throw(
             message     => "Method $method not allowed from $class.",
-            http_status => Apache2::Const::NOT_FOUND,
+            status => Apache2::Const::NOT_FOUND,
         );
     }
     return;

@@ -15,18 +15,15 @@ use Log::Log4perl qw(:easy);
 use YAML::Syck;
 
 Readonly our @ALLOWED_METHODS => qw( set read );
-our %testdata = (
-    foo     => {
-        boz     => [qw( noz schnoz )]
-    },
-    bar     => 'biz',
-);
 
 sub set {
     my ($self) = @_;
     DEBUG('setting session data');
     $self->content_type('text/plain');
-    $self->{session}{testdata}{$_} = $testdata{$_} for keys %testdata;
+    my ($data) = $self->param('data') =~ m{ \A (.*?) \z }mxs;
+    die "no data param!\n" if !$data;
+    DEBUG("received param data:\n$data|||\n");
+    $self->{session}{testdata} = Load($data);
     DEBUG(sub { "session data is now:\n".Dump($self->{session}) });
     $self->print("Set session data.\n");
     return Apache2::Const::HTTP_OK;

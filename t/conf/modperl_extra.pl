@@ -5,6 +5,8 @@ BEGIN {
 
 use English '-no_match_vars';
 
+warn "INC: (@INC)\n";
+
 use Log::Log4perl qw(:easy);
 my $logconf = q{
 log4perl.rootLogger=DEBUG, Screen

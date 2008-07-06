@@ -17,14 +17,14 @@ for L<Apache2::Controller>.
 
 =head1 SECTIONS
 
-=head2 http_status
+=head2 status
 
 If you're like me, you get confused as to which status codes are http
 status codes and which ones are used internally by Apache2 to signal the
 &handler subroutine exit status and return or deny further control to 
 the server.
 
-$r->http_status is set with the right value, usually HTTP_OK or 
+$r->status is set with the right value, usually HTTP_OK or 
 HTTP_(which might be overridden by an error in case an
 exception is thrown somewhere with ), and then handler() returns 
 Apache2::Const::OK in any case.  So far.  This might change if

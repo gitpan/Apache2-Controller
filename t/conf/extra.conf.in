@@ -5,7 +5,7 @@
 LoadModule apreq_module /usr/lib/apache2/modules/mod_apreq2.so
 
 # where Apache2::Controller and the test application libs can be found
-PerlSwitches -I@ServerRoot@/lib 
+PerlSwitches -I@ServerRoot@/lib
 
 PerlModule Apache::DBI
 PerlModule Apache2::Reload
@@ -15,10 +15,16 @@ PerlModule Apache2::Upload
 PerlModule Apache2::RequestUtil
 PerlModule Apache2::Cookie
 PerlModule Apache2::RequestIO
+PerlModule Apache2::Module
 
-#PerlLoadModule Apache2::Controller::Directives
+# ACK!  How do I make this work?
+# PerlLoadModule Apache2::Controller::Directives
+# A2CRenderTemplateDir @ServerRoot@/templates
+
+# instead of using this... comment the PerlSetVar out
 PerlSetVar A2CRenderTemplateDir @ServerRoot@/templates
 
+#PerlLoadModule TestApp::Simple::Dispatch
 PerlModule TestApp::Simple::Dispatch
 PerlModule TestApp::Render::Dispatch
 

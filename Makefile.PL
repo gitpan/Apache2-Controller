@@ -1,10 +1,18 @@
-use strict;
-use warnings;
-use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+BEGIN: {
+    use strict;
+    use warnings;
+    use English '-no_match_vars';
+    eval {
+        require ModPerl::MM;
+        require Apache::TestMM;
+    };
+    if ($EVAL_ERROR) {
+        warn "# No ModPerl::MM or Apache::TestMM: $EVAL_ERROR\n";
+        exit 0;
+    }
+    Apache::TestMM->import(qw( test clean ));
+}
 
-use Apache::TestMM qw( test clean );
 my @scripts = qw( t/TEST );
 Apache::TestMM::filter_args();
 Apache::TestMM::generate_script('t/TEST');
@@ -46,7 +54,7 @@ my @requires = qw(
     YAML::Syck
 );
 
-WriteMakefile(
+ModPerl::MM::WriteMakefile(
     NAME            => 'Apache2::Controller',
     AUTHOR          => 'Mark Hedges <hedges@scriptdolphin.org>',
     VERSION_FROM    => 'lib/Apache2/Controller.pm',

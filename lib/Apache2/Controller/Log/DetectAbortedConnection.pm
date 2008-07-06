@@ -1,10 +1,10 @@
-package Apache2::Controller::HelpingHandlers::Log::DetectAbortedConnection;
+package Apache2::Controller::Log::DetectAbortedConnection;
 
 # fwhew! that was a mouthful.
 
 =head1 NAME
 
-Apache2::Controller::HelpingHandlers::Log::DetectAbortedConnection -
+Apache2::Controller::Log::DetectAbortedConnection -
 helper handler for detecting cancelled connections to the client.
 
 =head1 DESCRIPTION
