@@ -25,7 +25,7 @@ my $tmp = File::Spec->tmpdir();
 my $dir = File::Spec->catfile($tmp, 'A2Ctest');
 
 do {
-    DEBUG("Creating temp directory $_");
+  # DEBUG("Creating temp directory $_");
     mkdir || die "Cannot create $_: $OS_ERROR\n";
 } for grep !-d, 
     $dir, 

@@ -1,5 +1,10 @@
 Revision history for Apache2-Controller
 
+0.4.1   2008-07-16T00:16:00
+        Changing version number to use 'version' package.
+        I had the version number screwed up before.
+        The numbers below are actually 0.4.0, 0.3.0 etc.
+
 0.0.4   2008-07-16T00:08:00
         New dispatch method HashTree implements alternative dispatching.
         Various improvements to documentation.  More tests.

@@ -39,6 +39,7 @@ t/lib/TestApp/Session/Dispatch.pm
 t/lib/TestApp/Session/Session.pm
 t/lib/TestApp/Simple/C/Top.pm
 t/lib/TestApp/Simple/Dispatch.pm
+t/pod.t
 t/pod-coverage.t
 t/render.t
 t/session.t
@@ -48,7 +49,5 @@ t/templates/render/foo/default.html
 t/templates/render/process/include.html
 t/templates/render/process.html
 t/unit_dispatch_hashtree.t
-t_future/pod.t
 util/apache2_http_response_reference_list.pl
-worklib/OpenID.pm
 META.yml                                 Module meta-data (added by MakeMaker)

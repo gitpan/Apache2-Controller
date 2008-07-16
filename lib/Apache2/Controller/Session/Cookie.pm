@@ -23,7 +23,7 @@ a cookie.
 
 =head1 DIRECTIVES
 
-=over4 
+=over 4 
 
 =item A2CSessionCookieName
 

@@ -6,7 +6,7 @@ Apache2::Controller - framework for Apache2 handler apps
 
 =head1 VERSION
 
-Version 0.0.5 - BETA TESTING
+Version 0.4.1 - BETA TESTING
 
 =cut
 
@@ -15,7 +15,7 @@ use warnings FATAL => 'all', NONFATAL => 'redefine';
 use English '-no_match_vars';
 
 use version;
-our $VERSION = version->new('0.0.5');
+our $VERSION = version->new('0.4.1');
 
 =head1 SYNOPSIS
 
