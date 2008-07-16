@@ -6,14 +6,16 @@ Apache2::Controller - framework for Apache2 handler apps
 
 =head1 VERSION
 
-Version 0.0.4 - BETA TESTING
+Version 0.0.5 - BETA TESTING
 
 =cut
 
 use strict;
 use warnings FATAL => 'all', NONFATAL => 'redefine';
+use English '-no_match_vars';
 
-our $VERSION = '0.0004';
+use version;
+our $VERSION = version->new('0.0.5');
 
 =head1 SYNOPSIS
 
@@ -403,8 +405,6 @@ though it's tempting to do so, because if you return an error code
 from the controller method, the PerlCleanupHandler will not run.
 
 =cut
-
-use English '-no_match_vars';
 
 use base qw( Apache2::Request Apache2::Controller::Methods );
 

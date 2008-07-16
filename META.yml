@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Apache2-Controller
-version:             0.0004
+version:             0.0.5
 abstract:            framework for Apache2 handler apps
 license:             ~
 author:              
@@ -41,6 +41,7 @@ requires:
     Test::More:                    
     URI:                           
     URI::Escape:                   
+    version:                       
     YAML::Syck:                    
 meta-spec:
     url:     http://module-build.sourceforge.net/META-spec-v1.3.html

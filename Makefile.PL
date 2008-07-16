@@ -52,6 +52,7 @@ my @requires = qw(
     URI
     URI::Escape
     YAML::Syck
+    version
 );
 
 ModPerl::MM::WriteMakefile(
