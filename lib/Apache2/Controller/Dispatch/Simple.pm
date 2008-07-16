@@ -6,7 +6,7 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
 
 =head1 SYNOPSIS
 
- <Location /subdir>
+ <Location "/subdir">
      SetHandler modperl
      PerlInitHandler MyApp::Dispatch
  </Location>
@@ -15,7 +15,6 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
 
  package MyApp::Dispatch;
  use base qw(
-     Apache2::Controller::Dispatch
      Apache2::Controller::Dispatch::Simple
  );
 
@@ -23,8 +22,6 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
      foo            => 'MyApp::C::Foo',
      'foo/bar'      => 'MyApp::C::Foo::Bar',
  );
-
- sub handler { Apache2::Controller::Dispatch::handler(shift, __PACKAGE__) }
 
 =head1 DESCRIPTION
 
@@ -38,49 +35,6 @@ longest known path to shortest.  For a site with many controllers and
 paths, a trie could possibly be more efficient.  Consider that implementation
 for another Dispatch plugin module.
 
-Any implementation of find_controller() should throw an 
-L<Apache2::Controller::X> with http => Apache2::Const::NOT_FOUND in the
-event that the detected method selected does not appear in the list of
-C<@ALLOWED_METHODS> in the controller module.  
-See L<Apache2::Controller::Funk/check_allowed_method( )>
-
-Successful run of find_controller() should result in four items of
-data being set in request->notes and request->pnotes:
-
-=over 4
-
-=item notes->{relative_uri} = matching part of uri relative to location
-
-This is the uri relative to the location. For example,
-if the dispatch module is the init handler in a C<< <Location /subdir> >>
-config block, then for /subdir/foo/bar/biz/zip in this example code,
-relative_uri should be 'foo/bar' because this is the key of %dispatch_map
-that was matched.  /subdir/foo/bar is the 'virtual directory.'
-
-If there is no relative uri, for example if the uri requested was /subdir
-and this is the same as the location, then C<notes->{relative_uri}> would be set to 
-the empty string.
-
-=item notes->{controller} = selected package name
-
-This should be the name of an Apache2::Controller subclass selected
-for dispatch.
-
-=item notes->{method} = method name in controller to process the uri
-
-This is the name of the method of the controller to use for this request.
-
-=item pnotes->{path_args} = [ remaining path_info ]
-
-The remaining 'virtual directory' arguments of the uri.
-In the example above for notes->{relative_uri}, this is [ 'biz', 'zip' ].
-
-=back
-
-@path_args is the array of remaining elements.  For example if your
-dispatch map contains the URI 'foo', and the incoming URI was '/foo/bar/baz',
-then $r->pnotes->{path_args} should be ['bar', 'baz'] before returning.
-
 =head1 METHODS
 
 =cut
@@ -89,13 +43,14 @@ use strict;
 use warnings;
 use English '-no_match_vars';
 
+use base qw( Apache2::Controller::Dispatch );
+
 use Apache2::Controller::X;
 use Apache2::Controller::Funk qw( controller_allows_method check_allowed_method );
 
 use Log::Log4perl qw(:easy);
 use YAML::Syck;
 
-my %dispatch_maps   = ( );
 my %search_uris     = ( );
 my %uri_lengths     = ( );
 
@@ -103,17 +58,13 @@ my %uri_lengths     = ( );
 sub _get_class_info {
     my ($self) = @_;
     my $class = $self->{class};
-    my ($dispatch_map, $uri_length_map, $search_uri_list) = ();
-    if (exists $dispatch_maps{$class}) {
-        $dispatch_map       = $dispatch_maps{$class};
+    my $dispatch_map = $self->get_dispatch_map();
+    my ($uri_length_map, $search_uri_list) = ();
+    if (exists $uri_lengths{$class}) {
         $uri_length_map     = $uri_lengths{$class};
         $search_uri_list    = $search_uris{$class};
     }
     else {
-        # find the dispatch map in parent class if not yet cached in this module
-        eval '$dispatch_map = \%'.$self->{class}.'::dispatch_map';
-        $dispatch_maps{$class} = $dispatch_map;
-
         # search dispatch uri keys from longest to shortest
         my @uris = keys %{$dispatch_map};
         Apache2::Controller::X->throw(
@@ -128,7 +79,6 @@ sub _get_class_info {
             sort { $uri_length_map->{$b} <=> $uri_length_map->{$a} } @uris 
         ];
 
-        DEBUG(sub{"dispatch_maps:".Dump(\%dispatch_maps)});
         DEBUG(sub{"search_uris:".Dump(\%search_uris)});
         DEBUG(sub{"uri_lengths:".Dump(\%uri_lengths)});
     }
@@ -279,6 +229,8 @@ sub find_controller {
 =head1 SEE ALSO
 
 L<Apache2::Controller::Dispatch>
+
+L<Apache2::Controller::Dispatch::HashTree>
 
 L<Apache2::Controller>
 

@@ -6,14 +6,14 @@ Apache2::Controller - framework for Apache2 handler apps
 
 =head1 VERSION
 
-Version 0.0.3 - TESTING
+Version 0.0.4 - BETA TESTING
 
 =cut
 
 use strict;
 use warnings FATAL => 'all', NONFATAL => 'redefine';
 
-our $VERSION = '0.0003';
+our $VERSION = '0.0004';
 
 =head1 SYNOPSIS
 
@@ -433,7 +433,9 @@ use Apache2::Const -compile => qw( :common :http );
 
 =head1 FUNCTIONS
 
-=head2 Apache2::Controller::handler( Apache2::RequestRec object )
+=head2 handler
+
+ Apache2::Controller::handler( Apache2::RequestRec object )
 
 The handler is pushed from an Apache2::Controller::Dispatch
 subclass and should not be set in the config file.  It looks
@@ -454,7 +456,7 @@ An HTTP status code of HTTP_BAD_REQUEST or greater will
 cause log_reason to be called with a truncated error string
 and the uri for recording in the access log.
 
-=head1 RUN_ALL mode
+=head3 RUN_ALL mode
 
 In the odd chance you plan to push further PerlResponseHandlers
 from your controller or server config, maybe to print
@@ -591,7 +593,9 @@ sub handler : method {
     # to continue or to stop processing the request if not.
 }
 
-=head2 MyApp::C::ControllerSubclass->new( Apache2::RequestRec object )
+=head2 new
+
+ $handler = MyApp::C::ControllerSubclass->new( Apache2::RequestRec object )
 
 This is called by handler() to create the Apache2::Controller object
 via the module chosen by your L<Apache2::Controller::Dispatch> subclass.
@@ -681,59 +685,7 @@ sub new {
 
 =head1 METHODS
 
-=head2 $self->fields( @list_of_field_names )
-
-Returns hash reference of query params from a list of field names.
-Uses the common convention of returning more than one value if
-present in the query, it 
-returns an array ref, or it returns a scalar if only one value.
-If no field names passed, returns a hash ref of all query params.
-
-=cut
-
-sub fields {
-    my ($self, @keys) = @_;
-    @keys = $self->param if !@keys;
-    my $fields = { };
-
-    for my $key (@keys) {
-        my @values = $self->param($key);
-        $fields->{$key} = @values > 1 ? \@values : $values[0];
-    }
-
-    return $fields;
-}
-
-=head2 $self->server_url( )
-
-This returns 'protocol://' concatenated with $r->get_server_name,
-and if $r->get_server_port is anything other than the protocol's
-standard port number, it will concat ':portnum'.
-
-=cut
-
-sub server_url {
-    my ($self) = @_;
-    Apache2::Controller::X->throw('unimplemented.  complicated!');
-    return 'http://'.$self->get_server_name();
-}
-
-=head2 $self->root_directory( )
-
-$r->document_root with everything after last / cut out.  Why?
-What use is this?
-
-=cut
-
-my %root_dirs = ( );
-sub root_directory {
-    my ($self) = @_;
-    my $class = $self->{class};
-    if (!exists $root_dirs{$class}) {
-        ($root_dirs{$class} = $self->document_root()) =~ s{ / [^/]* \z }{}mxs;
-    }
-    return $root_dirs{$class}; 
-}
+Handler's methods are extended by L<Apache2::Controller::Methods>.
 
 =head1 USING INHERITANCE
 

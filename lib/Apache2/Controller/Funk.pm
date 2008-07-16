@@ -45,7 +45,7 @@ Readonly my $ACCESS_LOG_REASON_LENGTH => 60;
 
 =head1 IMPORTABLE FUNCTIONS
 
-=head2 controller_allows_method( )
+=head2 controller_allows_method
 
  $bool = controller_allows_method($class, $method); # controller_allows_method()
 
@@ -96,7 +96,7 @@ sub controller_allows_method {
     return exists $allowed_methods{$class}{$method};
 }
 
-=head2 check_allowed_method( )
+=head2 check_allowed_method
 
  check_allowed_method($method, $class); # check_allowed_method()
 

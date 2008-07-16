@@ -30,8 +30,6 @@ Apache2::Controller::Dispatch - dispatch base class for Apache::Controller
      'biz/baz'  => 'MyApp::C::Biz::Baz',
  );
 
- sub handler { Apache2::Controller::Dispatch::handler(@_) } # required
-
  1;
  
 =head1 DESCRIPTION
@@ -40,21 +38,75 @@ C<Apache2::Controller::Dispatch> forms the base for the
 PerlInitHandler module to dispatch incoming requests to
 libraries based on their URL.
 
+You don't use this module.  You use one of its subclasses
+as a base for your dispatch module.
+
+=for comment
+
 Natively, this does not try to figure out the appropriate
 module using any complex magic.  Instead, you spell out the
 uris under the root handler location and what controller
-modules you want to handle paths under that URL.
+modules you want to handle paths under that URL, using the
+C<<A2CController>> directive.
 
-You do not absolutely need to implement any methods in your dispatch
-class.  Instead, use multiple bases that add features which
-will be called by the C<process()> method in proper sequence.
-Caveat: some of the other dispatch base modules, like 
-Apache2::Controller::Session::Cookie require that you implement
-certain methods, for example in that case, to access your database.
+(future implementation
 
-The handler subroutine that kicks up to Apache::Controller::Dispatch
-is essential here, otherwise there is no way for that module to know
-the class name of your dispatch module.
+=cut
+
+=head1 SUBCLASSES
+
+Subclasses of this module implement C<<find_controller()>>
+in different ways, usually interpreting the URI from a
+hash called C<<%dispatch_map>> in your subclass.
+
+See L<Apache2::Controller::Dispatch::Simple> and
+L<Apache2::Controller::Dispatch::HashTree> for other
+dispatch possibilities.
+
+Any implementation of find_controller() should throw an 
+L<Apache2::Controller::X> with http => Apache2::Const::NOT_FOUND in the
+event that the detected method selected does not appear in the list of
+C<@ALLOWED_METHODS> in the controller module.  
+See L<Apache2::Controller::Funk/check_allowed_method>
+
+Successful run of find_controller() should result in four items of
+data being set in request->notes and request->pnotes:
+
+=over 4
+
+=item notes->{relative_uri} = matching part of uri relative to location
+
+This is the uri relative to the location. For example,
+if the dispatch module is the init handler in a C<< <Location /subdir> >>
+config block, then for /subdir/foo/bar/biz/zip in this example code,
+relative_uri should be 'foo/bar' because this is the key of %dispatch_map
+that was matched.  /subdir/foo/bar is the 'virtual directory.'
+
+If there is no relative uri, for example if the uri requested was /subdir
+and this is the same as the location, then C<notes->{relative_uri}> would be set to 
+the empty string.
+
+=item notes->{controller} = selected package name
+
+This should be the name of an Apache2::Controller subclass selected
+for dispatch.
+
+=item notes->{method} = method name in controller to process the uri
+
+This is the name of the method of the controller to use for this request.
+
+=item pnotes->{path_args} = [ remaining path_info ]
+
+The remaining 'virtual directory' arguments of the uri.
+In the example above for notes->{relative_uri}, this is [ 'biz', 'zip' ].
+
+=back
+
+@path_args is the array of remaining elements.  For example if your
+dispatch map contains the URI 'foo', and the incoming URI was '/foo/bar/baz',
+then $r->pnotes->{path_args} should be ['bar', 'baz'] before returning.
+
+
 
 =cut
 
@@ -72,8 +124,6 @@ use Log::Log4perl qw(:easy);
 use Readonly;
 
 use YAML::Syck;
-
-Readonly my $GENERATE_SID_TRIES => 20; # times to generate unique sid
 
 use Apache2::RequestRec ();
 use Apache2::Connection ();
@@ -108,7 +158,6 @@ sub init {
     # and cache this information.
 
     my $class = $self->{class};
-    my $r     = $self->{r};
 
     if (!exists $limit_http_methods{$class}) {
         # init some package vars storing this information
@@ -117,7 +166,7 @@ sub init {
         my @limits = ( );
         eval '@limits = @'.$class.'::LIMIT_HTTP_METHODS; ';
         if (@limits) {
-            my $bits = $r->allowed();
+            my $bits = $self->{r}->allowed();
             eval '$bits = $bits | Apache2::Const::M_'.$_.';' for @limits;
             $limit_http_methods{$class} = {
                 lookup  => { map {$_=>1} @limits },
@@ -174,6 +223,26 @@ sub process {
     
     return Apache2::Const::OK;
 }
+
+=head2 get_dispatch_map
+
+Get the cached %dispatch_map of the dispatch handler object's class.
+Caches hashes here in parent package space and checks with C<<exists>>.
+
+=cut
+
+my %dispatch_maps = ( );
+sub get_dispatch_map {
+    my ($self) = @_;
+    my $class = $self->{class};
+    return $dispatch_maps{$class} if exists $dispatch_maps{$class};
+    my $dispatch_map;
+    eval '$dispatch_map = \%'.$class.'::dispatch_map';
+    $dispatch_maps{$class} = $dispatch_map;
+    DEBUG(sub{"dispatch_maps:".Dump(\%dispatch_maps)});
+    return $dispatch_map;
+}
+
 
 1;
 

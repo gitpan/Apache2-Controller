@@ -1,5 +1,10 @@
 Revision history for Apache2-Controller
 
+0.0.4   2008-07-16T00:08:00
+        New dispatch method HashTree implements alternative dispatching.
+        Various improvements to documentation.  More tests.
+        Developed unit test infrastructure.
+
 0.0.3   2008-07-06T00:08:00
         Changed render to always use A2CRenderTemplateDir as INCLUDE_PATH.
         Various and sundry updates.  Trying to get Directives to work.

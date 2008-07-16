@@ -17,12 +17,11 @@ PerlModule Apache2::Cookie
 PerlModule Apache2::RequestIO
 PerlModule Apache2::Module
 
-# ACK!  How do I make this work?
-# PerlLoadModule Apache2::Controller::Directives
-# A2CRenderTemplateDir @ServerRoot@/templates
+PerlLoadModule Apache2::Controller::Directives
+A2CRenderTemplateDir @ServerRoot@/templates
 
 # instead of using this... comment the PerlSetVar out
-PerlSetVar A2CRenderTemplateDir @ServerRoot@/templates
+#PerlSetVar A2CRenderTemplateDir @ServerRoot@/templates
 
 #PerlLoadModule TestApp::Simple::Dispatch
 PerlModule TestApp::Simple::Dispatch

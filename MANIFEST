@@ -5,6 +5,7 @@ Makefile.PL
 README
 lib/Apache2/Controller/Const.pm
 lib/Apache2/Controller/Directives.pm
+lib/Apache2/Controller/Dispatch/HashTree.pm
 lib/Apache2/Controller/Dispatch/Simple.pm
 lib/Apache2/Controller/Dispatch.pm
 lib/Apache2/Controller/Funk.pm
@@ -22,9 +23,14 @@ lib/Apache2/Controller.pm
 t/00-load.t
 t/TEST.PL
 t/basic.t
-t/conf/extra.conf.in
+t/conf/extra.last.conf.in
 t/conf/modperl_extra.pl
 t/lib/Apache2/Controller/Test/Funk.pm
+t/lib/Apache2/Controller/Test/Mockr.pm
+t/lib/Apache2/Controller/Test/UnitConf.pm
+t/lib/TestApp/HashTree/Baz.pm
+t/lib/TestApp/HashTree/Biz.pm
+t/lib/TestApp/HashTree/Foo.pm
 t/lib/TestApp/Render/C/Foo.pm
 t/lib/TestApp/Render/Controller.pm
 t/lib/TestApp/Render/Dispatch.pm
@@ -41,6 +47,7 @@ t/templates/render/foo/bar.html
 t/templates/render/foo/default.html
 t/templates/render/process/include.html
 t/templates/render/process.html
+t/unit_dispatch_hashtree.t
 t_future/pod.t
 util/apache2_http_response_reference_list.pl
 worklib/OpenID.pm

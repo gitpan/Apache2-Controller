@@ -122,6 +122,8 @@ L<Apache2::RequestRec> object in C<<$self->{r}>>.
 
 =cut
 
+my %can_init;
+
 sub new {
     my ($class, $r) = @_;
 
@@ -133,7 +135,8 @@ sub new {
     };
     bless $self, $class;
 
-    $self->init() if $self->can('init');
+    $can_init{$class} = $self->can('init') if !exists $can_init{$class};
+    $self->init() if $can_init{$class};
 
     return $self;
 }
