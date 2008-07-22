@@ -1,5 +1,8 @@
 Revision history for Apache2-Controller
 
+0.101.110   2008-07-22T18:00:00
+            Oops I see, Version.pm was not in the MANIFEST, no wonder.
+
 0.101.101   2008-07-22T02:30:00
             Version numbers are so strange.
 

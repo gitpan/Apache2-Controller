@@ -20,6 +20,7 @@ lib/Apache2/Controller/SQL/MySQL.pm
 lib/Apache2/Controller/Session/Cookie.pm
 lib/Apache2/Controller/Session.pm
 lib/Apache2/Controller/Uploads.pm
+lib/Apache2/Controller/Version.pm
 lib/Apache2/Controller/X.pm
 lib/Apache2/Controller.pm
 t/00-load.t
@@ -55,5 +56,4 @@ t/templates/primary/render/process.html
 t/templates/secondary/multipath.html
 t/unit_dispatch_hashtree.t
 util/apache2_http_response_reference_list.pl
-worklib/OpenID.pm
 META.yml                                 Module meta-data (added by MakeMaker)
