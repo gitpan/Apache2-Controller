@@ -1,5 +1,8 @@
 Revision history for Apache2-Controller
 
+0.101.101   2008-07-22T02:30:00
+            Version numbers are so strange.
+
 0.4.3   2008-07-21T00:22:00
         Removed ability to limit methods.  Use Apache config for that.
         A2C:SQL::Controller.  untested.   Controller now passes @path_args

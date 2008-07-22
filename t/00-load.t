@@ -24,4 +24,7 @@ BEGIN {
     use_ok("Apache2::Controller::X");
 }
 
-diag( "Testing Apache2::Controller $Apache2::Controller::VERSION, Perl $], $^X" );
+diag('');
+diag('Testing Apache2::Controller '.$Apache2::Controller::VERSION);
+diag('Numeric version is '.$Apache2::Controller::VERSION->numify);
+diag("Perl $], $^X");
