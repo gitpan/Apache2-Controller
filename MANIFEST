@@ -6,6 +6,7 @@ README
 lib/Apache2/Controller/Const.pm
 lib/Apache2/Controller/Directives.pm
 lib/Apache2/Controller/Dispatch/HashTree.pm
+lib/Apache2/Controller/Dispatch/RenderTemplate.pm
 lib/Apache2/Controller/Dispatch/Simple.pm
 lib/Apache2/Controller/Dispatch.pm
 lib/Apache2/Controller/Funk.pm
@@ -14,6 +15,7 @@ lib/Apache2/Controller/Methods.pm
 lib/Apache2/Controller/NonResponseBase.pm
 lib/Apache2/Controller/Refcard.pm
 lib/Apache2/Controller/Render/Template.pm
+lib/Apache2/Controller/SQL/Connector.pm
 lib/Apache2/Controller/SQL/MySQL.pm
 lib/Apache2/Controller/Session/Cookie.pm
 lib/Apache2/Controller/Session.pm
@@ -32,6 +34,7 @@ t/lib/TestApp/HashTree/Baz.pm
 t/lib/TestApp/HashTree/Biz.pm
 t/lib/TestApp/HashTree/Foo.pm
 t/lib/TestApp/Render/C/Foo.pm
+t/lib/TestApp/Render/C/Multipath.pm
 t/lib/TestApp/Render/Controller.pm
 t/lib/TestApp/Render/Dispatch.pm
 t/lib/TestApp/Session/Controller.pm
@@ -39,15 +42,18 @@ t/lib/TestApp/Session/Dispatch.pm
 t/lib/TestApp/Session/Session.pm
 t/lib/TestApp/Simple/C/Top.pm
 t/lib/TestApp/Simple/Dispatch.pm
-t/pod.t
 t/pod-coverage.t
+t/pod.t
 t/render.t
 t/session.t
-t/templates/render/default.html
-t/templates/render/foo/bar.html
-t/templates/render/foo/default.html
-t/templates/render/process/include.html
-t/templates/render/process.html
+t/templates/primary/render/default.html
+t/templates/primary/render/foo/bar.html
+t/templates/primary/render/foo/default.html
+t/templates/primary/render/multipath/test.html
+t/templates/primary/render/process/include.html
+t/templates/primary/render/process.html
+t/templates/secondary/multipath.html
 t/unit_dispatch_hashtree.t
 util/apache2_http_response_reference_list.pl
+worklib/OpenID.pm
 META.yml                                 Module meta-data (added by MakeMaker)

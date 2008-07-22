@@ -10,16 +10,22 @@ Set your A2C session subclass as a C<PerlHeaderParserHandler>.
 
 This example assumes use of L<Apache2::Controller::Session::Cookie>.
 
+ # get configuration directives:
+ PerlLoadModule Apache2::Controller::Directives
+
  # cookies will get path => /somewhere
  <Location /somewhere>
+     SetHandler              modperl
 
      # see Apache2::Controller::Dispatch for dispatch subclass info
      PerlInitHandler         MyApp::Dispatch
 
-     PerlSetVar  A2CSessionCookieName    myappsessid
-     PerlSetVar  A2CSessionClass         Apache::Session::MySQL
+     # see Apache2::Controller::SQL::Connector for database directives
 
-     PerlHeaderParserHandler MyApp::Session
+     A2CSessionCookieOptions name  myapp_sessid
+     A2CSessionClass         Apache::Session::MySQL
+
+     PerlHeaderParserHandler  Apache2::Controller::SQL::Connector  MyApp::Session
  </Location>
 
 In controllers, tied session hash is C<< $r->pnotes->{session} >>.
@@ -52,11 +58,6 @@ or use settings other than these, these are the default:
  <Location /elsewhere>
      PerlHeaderParserHandler MyApp::ApacheSessionFile
 
-     # until directives work, use this PerlSetVar syntax:
-     PerlSetVar A2CSessionClass Apache::Session::File
-     PerlSetVar A2CSessionOptions "Directory /tmp/sessions LockDirectory /var/lock/sessions"
-
-     # under future fixed Apache2::Controller::Directives directives
      A2CSessionClass    Apache::Session::File
      A2CSessionOptions  Directory       /tmp/sessions 
      A2CSessionOptions  LockDirectory   /var/lock/sessions
@@ -75,8 +76,10 @@ hashref for your L<Apache::Session> session type.
 For example, if your app uses DBIx::Class, maybe you want to
 go ahead and init your schema so you can get the database 
 handle directly and pass that to your session class.
-or if you use Apache::DBI, connect and put it in pnotes
-to save for your own use later.
+
+See
+L<Apache2::Controller::SQL::Connector|Apache2::Controller::SQL::Connector>
+for directives to set database connection in pnotes->{dbh}.
 
 Here's a code example for Location /somewhere above:
 
@@ -181,21 +184,6 @@ If you wanted to do it with combined cookies and url params in
 this way you could 
 overload C<get_session_id()> and C<set_session_id()>, etc. etc.
 
-=head1 COOKIES
-
-L<Apache2::Controller> itself implements its own C<handler()> subroutine,
-but other A2C handler modules C<<use base>> 
-L<Apache2::Controller::NonResponseBase>.
-
-For the most part the other A2C handlers do not need to construct
-the L<Apache2::Request> object, but this one constructs it to
-get at the cookies with L<Apache2::Cookie>.
-
-It puts the results of C<<Apache2::Cookie::Jar->new()>> into 
-C<<$r->pnotes->{cookie_jar}>>,
-or uses the ones there if it finds them already captured.  See
-L<Apache2::Controller::Methods/get_cookie_jar>.  Maybe.
-
 =head1 ERRORS
 
 C<<Apache2::Controller::Session>> will throw an error exception if the
@@ -219,11 +207,15 @@ use base qw(
     Apache2::Controller::Methods 
 );
 
+use Apache2::Controller::Version;
+
 use YAML::Syck;
 use Log::Log4perl qw(:easy);
+use File::Spec;
 
+use Apache2::Module;
+use Apache2::Const -compile => qw( OK OR_ALL TAKE1 ITERATE2 );
 use Apache2::RequestUtil ();
-
 use Apache2::Controller::X;
 
 =head2 process
@@ -260,7 +252,6 @@ sub process {
     } if !exists $used{$class};
 
     my $options = $self->get_options(); 
-        # (use $directives->{A2CSessionOptions} when they work)
     DEBUG(sub{"Creating session with options:\n".Dump($options)});
 
     my %tied_session = ();
@@ -335,43 +326,59 @@ sub process {
 
 =head2 get_options
 
-The default C<get_options> method uses Apache2::Session::File.
+If you do not configure C<<A2CSessionOptions>> or override the subroutine,
+the default C<get_options> method assumes default Apache2::Session::File.
 
-Default settings try to create subdirectories under /tmp/a2c_sessions
-and /var/lock/a2c_sessions which are named for the hostname of
-the current request, such as the virtual host name.
+Default settings try to create C<</tmp/A2C/$hostname/sess>>
+and C<</tmp/A2C/$hostname/lock>>. (uses C<<File::Spec->tmpdir>>,
+so it should work on Windoze?).
 
-If you use Windows or want to do something differently, use your
+If you want to do something differently, use your
 own settings or overload C<get_options()>.
 
-If you use Windows, you're chicken.  Live free!
-
 =cut
+
+my %created_temp_dirs;
 
 sub get_options {
     my ($self) = @_;
 
-    my $r = $self->{r};
-    my $hostname = $r->hostname();
+    my $opts = $self->get_directive('A2CSessionOptions');
+    
+    if (!$opts) {
+        my $hostname = $self->{r}->hostname();
+        my $tmp = File::Spec->tmpdir();
+        my $dir = File::Spec->catfile($tmp, 'A2C', $hostname);
+        my $sess = File::Spec->catfile($dir, 'sess');
+        my $lock = File::Spec->catfile($dir, 'lock');
 
-    my $opts  = $self->get_directive('A2CSessionOptions') || {
-        Directory       => "/tmp/a2c_sessions/$hostname",
-        LockDirectory   => "/var/lock/a2c_sessions/$hostname",
-    };
+        if (!exists $created_temp_dirs{$hostname}) {
+            do { mkdir || Apache2::Controller::X->throw("Create $_: $OS_ERROR") }
+                for grep !-d, $dir, $sess, $lock;
+            $created_temp_dirs{$hostname} = 1;
+        }
 
-    my $ref = ref $opts;
-    if (!$ref) {
-        $opts =~ s{ \A \s+ }{}mxs;
-        $opts =~ s{ \s+ \z }{}mxs;
-        $opts = { split m{ \s+ }mxs, $opts };
+        $opts = {
+            Directory       => $sess,
+            LockDirectory   => $lock,
+        };
     }
-    elsif ($ref eq 'ARRAY') {
-        $opts = { @{$opts} };
-    }
+
     DEBUG("returning session opts:\n".Dump($opts));
     return $opts;
 }
 
+=head1 DIRECTIVES
+
+Apache2 configuration directives.  L<Apache2::Controller::Directives>
+
+=over 4
+
+=item A2CSessionClass
+
+=item A2CSessionOptions
+
+=back
 
 =head1 SEE ALSO
 

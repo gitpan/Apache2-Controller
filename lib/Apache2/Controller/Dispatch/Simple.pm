@@ -40,10 +40,12 @@ for another Dispatch plugin module.
 =cut
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use English '-no_match_vars';
 
 use base qw( Apache2::Controller::Dispatch );
+
+use Apache2::Controller::Version;
 
 use Apache2::Controller::X;
 use Apache2::Controller::Funk qw( controller_allows_method check_allowed_method );

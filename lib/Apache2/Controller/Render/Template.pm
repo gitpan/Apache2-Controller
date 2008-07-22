@@ -8,20 +8,25 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
  # apache2 config file
 
- PerlModule Apache2::Controller::Directives
+ PerlLoadModule Apache2::Controller::Directives
+ PerlLoadModule Apache2::Controller::SQL::Connector
 
  # location of templates - must be defined
- A2CRenderTemplateDir           /var/myapp/templates
+ A2CRenderTemplatePath  /var/myapp/templates /var/myapp/template_components
 
- # looks for templates in /var/myapp/templates/foo/
  <Location /foo>
     SetHandler modperl
-    PerlInitHandler MyApp::Dispatch::Foo
+    PerlInitHandler             MyApp::Dispatch::Foo
+
+    # set directives A2C_DBI_DSN, etc. 
+    PerlHeaderParserHandler     Apache2::Controller::SQL::Connector
  </Location>
 
- # see L<Apache2::Controller::Dispatch> for A2C Dispatch inheritance.
+See L<Apache2::Controller::Dispatch> for A2C Dispatch implementations.
 
- package MyApp::C::Foo;  # let's assume this controller was dispatched
+See L<Apache2::Controller::Directives> and L<Apache2::Controller::SQL::Connector>.
+
+ package MyApp::C::Bar;  # let's assume this controller was dispatched
 
  use strict;
  use warnings;
@@ -29,23 +34,17 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
  use base qw(
     Apache2::Controller
     Apache2::Controller::Render::Template
-    MyApp::Model::Methods
-    MyApp::Security
  );
 
  use Apache2::Const -complie => qw( OK );
 
  my @ALLOWED_METHODS = qw( default );
 
- # suppose MyApp::Model::Methods connects dbh in startup sequence
- # and suppose MyApp::Security implements my_detaint_path_args()
- # to call a branch function for 'name' that detaints [ last, first ]
-
  sub default {
-    my ($self) = @_;
+    my ($self, @first, @last) = @_;
     my @path_args = $self->my_detaint_path_args('name'); # from $self->{path_args}
 
-    $self->{stash}{creditcards} = $self->{dbh}->fetchall_arrayref(
+    $self->{stash}{creditcards} = $self->pnotes->{dbh}->fetchall_arrayref(
         q{  SELECT ccnum, exp, addr1, zip, cac 
             FROM customer_credit_cards 
             WHERE lname = ? AND fname = ?
@@ -77,6 +76,42 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
 This module provides a nice rendering mechanism for Apache2::Controller.
 
+=head1 TEMPLATE OPTIONS
+
+You can specify options for L<Template> in one of two ways:
+
+=head2 DIRECTIVES
+
+By using 
+L<Apache2::Controller::Directives/A2CRenderTemplateOpts>:
+
+ <Location '/foo'>
+     A2CRenderTemplateOpts INTERPOLATE 1
+     A2CRenderTemplateOpts PRE_PROCESS header
+     A2CRenderTemplateOpts POST_CHOMP  1
+ </Location>
+
+=head2 METHOD template_options()
+
+Or by implementing C<<template_options>> in your controller:
+
+ package MyApp::Controller;
+ use base qw( Apache2::Controller Apache2::Controller::Render::Template );
+ my @ALLOWED_METHODS = qw( default );
+
+ sub template_options {
+     my ($self) = @_;
+     return {
+         INTERPOLATE => 1,
+         PRE_PROCESS => 'header',
+         POST_CHOMP  =. 1,
+     };
+ }
+
+ sub default { 
+    # ...
+ }
+
 =head1 STASH FUNCTIONS
 
 Several subroutine references are automatically included
@@ -87,6 +122,8 @@ in the stash for ease of use.
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
+
+use Apache2::Controller::Version;
 
 use Apache2::Const -compile => qw( SERVER_ERROR OK );
 use Apache2::Controller::X;
@@ -280,8 +317,8 @@ sub error {
     $self->{stash}{status_line} = $status_line;
     $self->{stash}{status} = $status;
 
-    my $template_dir = $self->get_directive('A2CRenderTemplateDir')
-        || Apache2::Controller::X->throw('A2CRenderTemplateDir not defined.');
+    my $template_dir = $self->get_directive('A2CRenderTemplatePath')
+        || Apache2::Controller::X->throw('A2CRenderTemplatePath not defined.');
     if (exists $error_templates{$template_dir}{$status_file}) {
 
         my $template = $error_templates{$template_dir}{$status_file};
@@ -350,12 +387,12 @@ To override the auto-select template, just set $self->{template}
 before you call C<<render()>>.
 
 It looks for templates in a computed directory.  The directory where it
-looks will always be the directory set with the A2CRenderTemplateDir 
+looks will always be the directory set with the A2CRenderTemplatePath 
 directive in the config file, appended with the current request location,
 i.e. the directory of the Location directive in the config file, 
 appended with relative_uri, appended with method name and '.html'.
 
- A2CRenderTemplateDir + location + relative_uri + method.html
+ A2CRenderTemplatePath + location + relative_uri + method.html
 
 For example, the sequence in SYNOPSIS above renders the file 
 C</var/myapp/templates/foo/default.html> .
@@ -434,81 +471,42 @@ sub detect_template {
     return $template;
 }
 
-=head2 detect_template_include_path
-
-Like C<<detect_template()>>, this detects the appropriate include
-path for the template toolkit object, sets it as 
-C<<$self->{template_include_path}>> and returns it.
-
-This is the directive A2CRenderTemplateDir plus the C<< <Location> >>.
-So if you set up your handler to process everything under location /render,
-and A2CRenderTemplateDir was /var/www/mytemplates, the include_path
-used for the TT object would be /var/www/mytemplates/render/.
-
-=cut
-
-sub detect_template_include_path {
-    my ($self) = @_;
-
-    return $self->{template_include_path} if $self->{template_include_path};
-
-    my $template_path = $self->get_directive('A2CRenderTemplateDir')
-        || Apache2::Controller::X->throw("A2CRenderTemplateDir not defined");
-
-    my $loc = $self->location();
-
-    # trim leading and trailing /'s
-    $loc = '' if $loc eq '/';
-    if ($loc) {
-        $loc = substr($loc, 1) if length $loc > 1 && substr($loc, 0, 1) eq '/';
-        substr($loc, -1, 1, '') if substr($loc, -1) eq '/';
-    }
-    DEBUG("so far have '$template_path' / '$loc'");
-
-    DEBUG(sub{Dump({
-        loc     => $loc,
-        template_path => $template_path,
-    })});
-
-    my $dir = $self->{template_include_path} = File::Spec->catfile(
-        $template_path,
-        $loc,
-    );
-
-    return $dir;
-}
-
 =head2 get_tt_obj
 
 Get the L<Template> object set up with the appropriate include directory
-set from the directive C<<A2CRenderTemplateDir>>.
+set from the directive C<<A2CRenderTemplatePath>>.
 
 Directive C<A2CRenderTemplateOpts> sets default C<new()>
 options for L<Template>.  
 
 =cut
 
+my %implements_template_opts;
 my %tts = ();
 sub get_tt_obj {
     my ($self) = @_;
-  # my $include_path = $self->detect_template_include_path();
 
-    my $include_path = $self->get_directive('A2CRenderTemplateDir')
-        || Apache2::Controller::X->throw("A2CRenderTemplateDir not defined");
+    my $include_path = $self->get_directive('A2CRenderTemplatePath')
+        || Apache2::Controller::X->throw("A2CRenderTemplatePath not defined");
 
-    return $tts{$include_path} if exists $tts{$include_path};
+    my $class = $self->{class};
+    $implements_template_opts{$class} = $self->can('template_opts')
+        if !exists $implements_template_opts{$class};
 
-    DEBUG("using include_path '$include_path' to set up a new TT object");
+    my %opts 
+        = $implements_template_opts{$class}
+        ? %{ $self->template_opts() }
+        : %{ $self->get_directive('A2CRenderTemplateOpts') || { } };
 
-    my %opts = %{ $self->get_directive('A2CRenderTemplateOpts') || { } };
     $opts{INCLUDE_PATH} 
         = !$opts{INCLUDE_PATH}    ? $include_path
-        : ref $opts{INCLUDE_PATH} ? [@{$opts{INCLUDE_PATH}}, $include_path]
-        :                           [$opts{INCLUDE_PATH}, $include_path];
+        : ref $opts{INCLUDE_PATH} ? [@{$opts{INCLUDE_PATH}}, @{$include_path}]
+        :                           [$opts{INCLUDE_PATH}, @{$include_path}];
 
-  # $opts{DEBUG} = 'all';   # turn on if L4P set to DEBUG here??
+    my $opts_key = Dump(\%opts);
+    DEBUG("using opts for new TT on $include_path:\n$opts_key");
 
-    DEBUG(sub{"using opts for new TT on $include_path:\n".Dump(\%opts)});
+    return $tts{$opts_key} if exists $tts{$opts_key};
 
     my $tt;
     
@@ -516,7 +514,7 @@ sub get_tt_obj {
     Apache2::Controller::X->throw("No TT for $include_path: $EVAL_ERROR") 
         if $EVAL_ERROR;
 
-    $tts{$include_path} = $tt;
+    $tts{$opts_key} = $tt;
 
     return $tt;
 }

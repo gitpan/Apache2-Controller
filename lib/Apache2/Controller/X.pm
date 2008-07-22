@@ -1,8 +1,5 @@
 package Apache2::Controller::X;
 
-use warnings;
-use strict;
-
 =head1 NAME
 
 Apache2::Controller::X - Exception::Class hierarchy for Apache2::Controller
@@ -119,6 +116,9 @@ If you want to do an internal redirect, just do it with
 $self->internal_redirect() inherited from Apache2::SubRequest.
 
 =cut
+
+use warnings FATAL => 'all';
+use strict;
 
 use Exception::Class (
     'Apache2::Controller::X'           => { 

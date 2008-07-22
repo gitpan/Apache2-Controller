@@ -1,14 +1,17 @@
 BEGIN: {
     use strict;
-    use warnings;
+    use warnings FATAL => 'all';
     use English '-no_match_vars';
-    eval {
-        require ModPerl::MM;
-        require Apache::TestMM;
-    };
-    if ($EVAL_ERROR) {
-        warn "# No ModPerl::MM or Apache::TestMM: $EVAL_ERROR\n";
-        exit 0;
+    for my $pre_prereq_lib (qw(
+        ModPerl::MM
+        Apache::TestMM
+        version
+        )) {
+        eval "require $pre_prereq_lib;";
+        if ($EVAL_ERROR) {
+            warn "# Must install $pre_prereq_lib first: $EVAL_ERROR\n";
+            exit 0;
+        }
     }
     Apache::TestMM->import(qw( test clean ));
 }
@@ -58,7 +61,7 @@ my @requires = qw(
 ModPerl::MM::WriteMakefile(
     NAME            => 'Apache2::Controller',
     AUTHOR          => 'Mark Hedges <hedges@scriptdolphin.org>',
-    VERSION_FROM    => 'lib/Apache2/Controller.pm',
+    VERSION_FROM    => 'lib/Apache2/Controller/Version.pm',
     ABSTRACT_FROM   => 'lib/Apache2/Controller.pm',
     DISTNAME        => 'Apache2-Controller',
     PL_FILES        => { },

@@ -13,8 +13,7 @@ use Log::Log4perl qw(:easy);
 our %dispatch_map = (
     default     => 'TestApp::Render::Controller',
     foo         => 'TestApp::Render::C::Foo',
+    multipath       => 'TestApp::Render::C::Multipath',
 );
-
-our @limit_http_methods = qw( GET POST );
 
 1;

@@ -7,45 +7,42 @@ LoadModule apreq_module /usr/lib/apache2/modules/mod_apreq2.so
 # where Apache2::Controller and the test application libs can be found
 PerlSwitches -I@ServerRoot@/lib
 
-PerlModule Apache::DBI
-PerlModule Apache2::Reload
-PerlModule Apache2::Request
-PerlModule Apache2::RequestRec
-PerlModule Apache2::Upload
-PerlModule Apache2::RequestUtil
-PerlModule Apache2::Cookie
-PerlModule Apache2::RequestIO
-PerlModule Apache2::Module
+PerlLoadModule Apache2::Request
+PerlLoadModule Apache2::RequestRec
+PerlLoadModule Apache2::Upload
+PerlLoadModule Apache2::RequestUtil
+PerlLoadModule Apache2::Cookie
+PerlLoadModule Apache2::RequestIO
+PerlLoadModule Apache2::Module
 
 PerlLoadModule Apache2::Controller::Directives
-A2CRenderTemplateDir @ServerRoot@/templates
+A2CRenderTemplatePath @ServerRoot@/templates/primary
 
-# instead of using this... comment the PerlSetVar out
-#PerlSetVar A2CRenderTemplateDir @ServerRoot@/templates
-
-#PerlLoadModule TestApp::Simple::Dispatch
-PerlModule TestApp::Simple::Dispatch
-PerlModule TestApp::Render::Dispatch
+PerlLoadModule TestApp::Simple::Dispatch
+PerlLoadModule TestApp::Render::Dispatch
 
 # preload the module
-<Location /simple>
+<Location '/simple'>
     SetHandler modperl
     PerlInitHandler TestApp::Simple::Dispatch
 </Location>
 
-<Location /render>
+<Location '/render'>
     SetHandler modperl
     PerlInitHandler TestApp::Render::Dispatch
 </Location>
 
-PerlModule TestApp::Session::Session
-<Location /session>
+<Location '/render/multipath'>
+    A2CRenderTemplatePath @ServerRoot@/templates/primary @ServerRoot@/templates/secondary
+</Location>
+
+PerlLoadModule TestApp::Session::Session
+<Location '/session'>
     SetHandler modperl
     PerlInitHandler TestApp::Session::Dispatch
 
     # in theory my testapp get_options should detect system-appropriate tempdirs
-    PerlSetVar  A2CSessionCookieName    testapp_sessid
-    PerlHeaderParserHandler             TestApp::Session::Session
+    A2CSessionCookieOptions     name    testapp_sessid
+    PerlHeaderParserHandler     TestApp::Session::Session
 </Location>
-
 

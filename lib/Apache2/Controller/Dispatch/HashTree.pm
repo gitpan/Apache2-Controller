@@ -67,6 +67,8 @@ use Carp qw( confess );
 
 use base qw( Apache2::Controller::Dispatch );
 
+use Apache2::Controller::Version;
+
 use Apache2::Controller::X;
 use Apache2::Controller::Funk qw( controller_allows_method check_allowed_method );
 

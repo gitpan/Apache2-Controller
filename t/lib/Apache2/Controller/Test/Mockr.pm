@@ -1,9 +1,11 @@
 package Apache2::Controller::Test::Mockr;
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
 use Apache2::Controller::Test::UnitConf;
+
+use Apache2::Controller::Version;
 
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init(\$L4P_UNIT_CONF);

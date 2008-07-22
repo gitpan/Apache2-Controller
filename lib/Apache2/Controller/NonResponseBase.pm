@@ -39,8 +39,10 @@ processing the chain of handlers... we'll see.
 =cut
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use English '-no_match_vars';
+
+use Apache2::Controller::Version;
 
 use Log::Log4perl qw(:easy);
 use YAML::Syck;
@@ -110,7 +112,8 @@ sub handler : method {
 =head2 new
 
 C<new()> creates an object of the child class and assigns the
-C<<Apache2::RequestRec>> object to C<<$self->{r}>>.
+C<< Apache2::RequestRec >> object to 
+C<< $self->{r} >>.
 
 If the parent class defines a method C<init()>, this will
 be called at the end of object creation.
@@ -118,7 +121,8 @@ be called at the end of object creation.
 Unlike L<Apache2::Controller>, the handler object of other handlers
 that use this package as a base do not create, delegate to and subclass
 the L<Apache2::Request> object.  They just keep the original 
-L<Apache2::RequestRec> object in C<<$self->{r}>>.
+L<Apache2::RequestRec> object in 
+C<< $self->{r} >>.
 
 =cut
 

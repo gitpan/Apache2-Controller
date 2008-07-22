@@ -20,10 +20,12 @@ queried futher using 'exists', which is very fast.
 package Apache2::Controller::Funk;
 
 use strict;
-use warnings FATAL => 'all', NONFATAL => 'redefine';
+use warnings FATAL => 'all';
 use English '-no_match_vars';
 
 use base 'Exporter';
+
+use Apache2::Controller::Version;
 
 use Log::Log4perl qw( :easy );
 use Readonly;

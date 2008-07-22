@@ -19,10 +19,12 @@ Various common Readonly constants for use by Apache2::Controller modules.
 =cut
 
 use strict;
-use warnings FATAL => 'all', NONFATAL => 'redefine';
+use warnings FATAL => 'all';
 use Readonly;
 
 use base 'Exporter';
+
+use Apache2::Controller::Version;
 
 our @EXPORT_OK = qw(
     @RANDCHARS

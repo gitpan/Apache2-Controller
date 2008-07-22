@@ -6,16 +6,7 @@ Apache2::Controller - framework for Apache2 handler apps
 
 =head1 VERSION
 
-Version 0.4.1 - BETA TESTING
-
-=cut
-
-use strict;
-use warnings FATAL => 'all', NONFATAL => 'redefine';
-use English '-no_match_vars';
-
-use version;
-our $VERSION = version->new('0.4.1');
+L<Apache2::Controller::Version>
 
 =head1 SYNOPSIS
 
@@ -47,13 +38,11 @@ method for the uri.
 
  # http://myapp.xyz/foo/bar/biz/schnozz
  sub bar {
-     my ($self) = @_;
-     my @path_args = @{ $self->{path_args} }; # qw( biz schnozz )
+     my ($self, @path_args) = @_;             # @path_args = qw( biz schnozz )
+     # @path_args = @{ $self->{path_args} };  # \@path_args in self, also pnotes
+
      $self->content_type('text/html');
-     $self->print(q{
-        <p>Sometimes you eat the bear, 
-        and sometimes the bear eats you.</p>
-     });
+     $self->print(q{ <p>"WE ARE ALL KOSH"</p> });
      return Apache2::Const::HTTP_OK;
  }
 
@@ -406,7 +395,13 @@ from the controller method, the PerlCleanupHandler will not run.
 
 =cut
 
+use strict;
+use warnings FATAL => 'all';
+use English '-no_match_vars';
+
 use base qw( Apache2::Request Apache2::Controller::Methods );
+
+use Apache2::Controller::Version;
 
 use Readonly;
 use Scalar::Util qw( blessed );
@@ -433,20 +428,128 @@ use Apache2::Const -compile => qw( :common :http );
 
 =head1 FUNCTIONS
 
+=head2 new
+
+ $handler = MyApp::C::ControllerSubclass->new( Apache2::RequestRec object )
+
+This is called by handler() to create the Apache2::Controller object
+via the module chosen by your L<Apache2::Controller::Dispatch> subclass.
+
+If your controller defines local TEMP_DIR or POST_MAX or the
+L<Apache2::Controller::Directives> A2C_TEMP_DIR or A2C_POST_MAX,
+these will be applied as settings during construction of the
+L<Apache2::Request> object from the L<Apache2::RequestRec> object.
+
+=head3 subclassing new( )
+
+If you need to do the same stuff every time a request
+starts, you can override the constructor.
+
+ package MyApp::InitController;
+ sub new {
+     my $self = SUPER::new(@_);
+     $self->push_handlers(PerlCleanupHandler => sub {
+         my ($r) = @_;
+         my $dbh = $r->pnotes->{dbh};
+         $dbh->rollback() unless $r->notes->{commit_success};
+     });    # implements some convention that you set 'commit_success', say
+     return $self;
+ }
+
+Similarly, to do something always at the end of every 
+request, from within the dispatched PerlResponseHandler:
+
+ package MyApp::DestroyController;
+ use Devel::Size;
+ use Log::Log4perl qw(:easy);
+ my $MAX = 40 * 1024 * 1024;
+ sub DESTROY {
+     my ($self) = @_;
+     my $size = total_size($self);  # whoo baby!
+     INFO("size of $self->{class} is bigger than $MAX!") if $size > $MAX;
+     return; # self is destroyed
+ }
+
+And your subclass is:
+
+ package MyApp::Controller::Foo;
+ use base qw( Apache2::Controller MyApp::InitController MyApp::DestroyController );
+
+ # ...
+
+See L<USING INHERITANCE> below for more tips.
+
+=cut
+
+my %temp_dirs  = ( );
+my %post_maxes = ( );
+
+sub new {
+    my ($class, $r) = @_;
+
+    DEBUG("new $class, reqrec is '$r'");
+
+    my $self = {
+        class       => $class,
+        r           => $r,      
+    };
+    # populate r with Apache2::RequestRec obj so pnotes works
+    # to get the directives for creating Apache2::Request obj
+
+    bless $self, $class;
+
+    DEBUG("creating Apache2::Request object");
+    my $req = Apache2::Request->new(
+        $r, $self->get_apache2_request_opts($class) 
+    );
+    DEBUG("request object is '$req'");
+
+    $self->{r} = $req;  # Apache2::Request subclass automagic
+
+    my $notes  = $req->notes;
+    my $pnotes = $req->pnotes;
+
+    my $method = $notes->{method};
+
+    check_allowed_method($class => $method);  # double-check, i guess
+
+    $self->{method}      = $method;
+    $self->{path_args}   = $pnotes->{path_args};
+    $self->{remote_addr} = $notes->{remote_addr};
+
+    # don't instantiate the 'session' key of $self unless it's implemented
+    # in some earlier stage of the apache lifecycle.
+    my $session = $pnotes->{session};
+    if ($session) {
+        $self->{session} = $session;
+        DEBUG(sub{"found and attached session to controller self:\n".Dump($session)});
+        # this is the same reference as the pnotes reference still,
+        # so the cleanup handler will find all changes made to it
+    }
+
+    DEBUG(sub { Dump({
+        map {($_ => $self->{$_} ? "$self->{$_}" : '[undef]')} keys %$self 
+    }) });
+
+    return $self;
+}
+
+=head1 METHODS
+
+Methods are also extended by 
+L<Apache2::Controller::Methods|Apache2::Controller::Methods>.
+
 =head2 handler
 
- Apache2::Controller::handler( Apache2::RequestRec object )
+ # called from Apache, your subclass pushed to PerlResponseHandler
+ # by your A2C dispatch handler:
+ MyApp::Controller::Foo->handler( Apache2::RequestRec object )
 
 The handler is pushed from an Apache2::Controller::Dispatch
-subclass and should not be set in the config file.  It looks
+subclass and via your dispatched subclass of Apache2::Controller.
+It should not be set in the config file.  It looks
 for the controller module name in C<< $r->notes->{controller} >>
 and for the method name in C<< $r->notes->{method} >>.
-
-It runs start_request() if implemented, then runs the
-selected method, then runs end_request() if implemented,
-setting the status to any positive return value
-returned by any of those methods.  (The last positive
-value returned will be the final status.)
 
 Errors are intercepted and if the handler object was created
 and implements an C<< $handler->error($exception) >> method 
@@ -490,7 +593,8 @@ sub handler : method {
         $method  = $handler->{method};
 
         DEBUG("executing $class -> $method()");
-        $status = $handler->$method();
+        my $args = $r->pnotes->{path_args} || [];
+        $status = $handler->$method(@{$args});
         $status = $handler->status() if !defined $status;
     };
     if ($X = $EVAL_ERROR) {
@@ -593,100 +697,6 @@ sub handler : method {
     # to continue or to stop processing the request if not.
 }
 
-=head2 new
-
- $handler = MyApp::C::ControllerSubclass->new( Apache2::RequestRec object )
-
-This is called by handler() to create the Apache2::Controller object
-via the module chosen by your L<Apache2::Controller::Dispatch> subclass.
-
-If your controller defines local TEMP_DIR or POST_MAX or the
-L<Apache2::Controller::Directives> A2C_TEMP_DIR or A2C_POST_MAX,
-these will be applied as settings during construction of the
-L<Apache2::Request> object from the L<Apache2::RequestRec> object.
-
-=head3 subclassing new( )
-
-If you need to do the same stuff every time a request
-starts, you can override the constructor.
-
- package MyApp::InitController;
- sub new {
-     my $self = SUPER::new(@_);
-     $self->push_handlers(PerlCleanupHandler => sub {
-         my ($r) = @_;
-         my $dbh = $r->pnotes->{dbh};
-         $dbh->rollback() unless $r->notes->{commit_success};
-     });
-     return $self;
- }
-
- package MyApp::C::Foo;
- use base qw( Apache2::Controller MyApp::InitController );
-
- # ...
-
-See L<USING INHERITANCE> below for more tips.
-
-=cut
-
-my %temp_dirs  = ( );
-my %post_maxes = ( );
-
-sub new {
-    my ($class, $r) = @_;
-
-    DEBUG("new $class, reqrec is '$r'");
-
-    my $self = {
-        class       => $class,
-        r           => $r,      
-    };
-    # populate r with Apache2::RequestRec obj so pnotes works
-    # to get the directives for creating Apache2::Request obj
-
-    bless $self, $class;
-
-    DEBUG("creating Apache2::Request object");
-    my $req = Apache2::Request->new(
-        $r, $self->get_apache2_request_opts($class) 
-    );
-    DEBUG("request object is '$req'");
-
-    $self->{r} = $req;  # Apache2::Request subclass automagic
-
-    my $notes  = $req->notes;
-    my $pnotes = $req->pnotes;
-
-    my $method = $notes->{method};
-
-    check_allowed_method($class => $method);  # double-check, i guess
-
-    $self->{method}      = $method;
-    $self->{path_args}   = $pnotes->{path_args};
-    $self->{remote_addr} = $notes->{remote_addr};
-
-    # don't instantiate the 'session' key of $self unless it's implemented
-    # in some earlier stage of the apache lifecycle.
-    my $session = $pnotes->{session};
-    if ($session) {
-        $self->{session} = $session;
-        DEBUG(sub{"found and attached session to controller self:\n".Dump($session)});
-        # this is the same reference as the pnotes reference still,
-        # so the cleanup handler will find all changes made to it
-    }
-
-    DEBUG(sub { Dump({
-        map {($_ => $self->{$_} ? "$self->{$_}" : '[undef]')} keys %$self 
-    }) });
-
-    return $self;
-}
-
-=head1 METHODS
-
-Handler's methods are extended by L<Apache2::Controller::Methods>.
-
 =head1 USING INHERITANCE
 
 There is no need for a predefined sequence of start-up or clean-up
@@ -752,6 +762,8 @@ L<Apache2::Controller::Dispatch>
 L<Apache2::Controller::Uploads>
 
 L<Apache2::Controller::Session>
+
+L<Apache2::Controller::SQL::Connector>
 
 L<Apache2::Controller::Auth::OpenID>
 

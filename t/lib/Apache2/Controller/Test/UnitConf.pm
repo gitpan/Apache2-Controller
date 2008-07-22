@@ -1,12 +1,14 @@
 package Apache2::Controller::Test::UnitConf;
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
 use Readonly;
 use FindBin;
 
 use base qw( Exporter );
+
+use Apache2::Controller::Version;
 
 our @EXPORT = qw(
     $L4P_UNIT_CONF

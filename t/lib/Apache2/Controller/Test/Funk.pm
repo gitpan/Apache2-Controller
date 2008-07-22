@@ -18,10 +18,12 @@ all the Apache::Test stuff.
 package Apache2::Controller::Test::Funk;
 
 use strict;
-use warnings FATAL => 'all', NONFATAL => 'redefine';
+use warnings FATAL => 'all';
 use English '-no_match_vars';
 
 use base 'Exporter';
+
+use Apache2::Controller::Version;
 
 our @EXPORT_OK = qw(
     diag

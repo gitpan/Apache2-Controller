@@ -6,62 +6,76 @@ Apache2::Controller::SQL::MySQL - useful database methods for MySQL
 
 =head1 SYNOPSIS
 
- package MyApp::C::Foo;
+ package UFP::SFC::Controller::Tools;
  use base qw( 
      Apache2::Controller 
-     Apache2::Controller::MySQL
+     Apache2::Controller::SQL::MySQL
  );
  # ...
 
+=head1 DESCRIPTION
+
+Provides some useful methods for interacting with a MySQL database.
+
 =head1 METHODS
 
-=head2 insert_hash( \%hashref )
+=head2 insert_hash
 
-Insert data into the database.
+ insert_hash( \%hashref )
 
- # insert_hash()
- # http://myapp.xyz/foo?ship=enterprise&captain=kirk&sci=spock&med=mccoy
+Insert data into the database.  
+
+ # http://sfc.ufp/tools/register_crew/enterprise?captain=kirk&sci=spock&med=mccoy
  sub register_crew {
-     my ($self) = @_; 
-     my $crew = $self->fields(qw( captain sci med ));
+     my ($self, $ship) = @_; 
+     my $crew = $self->param();
      $self->insert_hash({
-         table   => 'crew',
-         data    => $crew,
+         table    => "crew_$ship",
+         data     => $crew,
      });
      $self->print("Warp factor 5, engage.\n");
      return Apache2::Const::HTTP_OK;
  }
 
+Requires $self->pnotes->{dbh} be connected.  
+See L<Apache2::Controller::SQL::Connector>.
+
 Hashref argument supports these fields:
 
 =over 4
 
-=item * table
+=item table
 
 The SQL table to insert into.
 
-=item * data
+=item data
 
 The hash ref of field data to insert.
 
-=item * on_dup_sql
+=item on_dup_sql
 
 Optional string of SQL for after 'ON DUPLICATE KEY UPDATE'.
-This MySQL SQL extension be used if this param is absent.
+Format it yourself.
 
-=item * on_dup_bind
+=item on_dup_bind
 
-Array ref of bind values for ?'s in on_dup_sql.
+Array ref of bind values for extra C<?> characters in C<on_dup_sql>.
 
 =back
 
 =cut
 
+use strict;
+use warnings FATAL => 'all';
+use English '-no_match_vars';
+
+use Apache2::Controller::Version;
+
 sub insert_hash {
     my ($self, $p) = @_;
 
     my ($table, $data, $on_dup_sql, $on_dup_bind) = @{$p}{qw(
-        table  data  on_dup_sql  on_dup_bind
+         table   data   on_dup_sql   on_dup_bind
     )};
 
     my @bind = values %{$data};
@@ -84,7 +98,7 @@ sub insert_hash {
         ($id) = $dbh->selectrow_array(q{ SELECT LAST_INSERT_ID() });
     };
     if ($EVAL_ERROR) {
-        Dolph::X->throw(
+        Apache2::Controller::X->throw(
             message => "database error: $EVAL_ERROR",
             dump => {
                 sql => $sql,
@@ -95,8 +109,24 @@ sub insert_hash {
     return $id;
 }
 
+=head1 SEE ALSO
 
+L<Apache2::Controller::SQL::Connector>
 
+L<Apache2::Controller>
+
+=head1 AUTHOR
+
+Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2008 Mark Hedges.  CPAN: markle
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
+
+=cut
 
 1;
 

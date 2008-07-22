@@ -111,7 +111,6 @@ then $r->pnotes->{path_args} should be ['bar', 'baz'] before returning.
 =cut
 
 use strict;
-#use warnings FATAL => 'all', NONFATAL => 'redefine';
 use warnings FATAL => 'all';
 use English '-no_match_vars';
 
@@ -119,6 +118,8 @@ use base qw(
     Apache2::Controller::NonResponseBase 
     Apache2::Controller::Methods 
 );
+
+use Apache2::Controller::Version;
 
 use Log::Log4perl qw(:easy);
 use Readonly;
@@ -136,48 +137,6 @@ use Apache2::Controller::Funk qw( log_bad_request_reason );
 
 =head1 METHODS
 
-=head2 $handler->init()
-
-You can limit HTTP methods in your child class:
-
- package MyApp::Dispatch;
- use base qw( Apache2::Controller::Dispatch );
- my @LIMIT_HTTP_METHODS = qw( GET POST ); # but not HEAD or PUT, etc
-
-This gets processed by C<init()> which is run from 
-C<Apache2::Controller::NonResponseBase> if the method is
-available.
-
-=cut
-
-my %limit_http_methods = ();
-
-sub init {
-    my ($self) = @_;
-    # figure out if the dispatch subclass limits some http methods
-    # and cache this information.
-
-    my $class = $self->{class};
-
-    if (!exists $limit_http_methods{$class}) {
-        # init some package vars storing this information
-        
-        # what http methods are limited?  no entries is same as unlimited.
-        my @limits = ( );
-        eval '@limits = @'.$class.'::LIMIT_HTTP_METHODS; ';
-        if (@limits) {
-            my $bits = $self->{r}->allowed();
-            eval '$bits = $bits | Apache2::Const::M_'.$_.';' for @limits;
-            $limit_http_methods{$class} = {
-                lookup  => { map {$_=>1} @limits },
-                bits    => $bits,
-            };
-          # DEBUG(sub {"limit_http_methods:".Dump(\%limit_http_methods)});
-        }
-    }
-    return;
-}
-
 =head2 $handler->process()
 
 process() is the main guts of Apache2::Controller::Dispatch logic.
@@ -194,19 +153,6 @@ sub process {
 
     my $r       = $self->{r};
     my $class   = $self->{class};
-
-    # limit http methods if limits are defined in parent class
-    # this is GET, POST, PUT etc. of the http protocol
-    if (exists $limit_http_methods{$class}) {
-        my $http_method_number = $r->method_number();
-        if  (   $http_method_number     # tests get method '0'
-            &&  !exists $limit_http_methods{$class}{lookup}{$http_method_number}
-            ) {
-            $r->allowed( $r->allowed | $limit_http_methods{$class}{bits} );
-            DEBUG("Method not allowed: $http_method_number");
-            return Apache2::Const::HTTP_METHOD_NOT_ALLOWED;
-        }
-    }
 
     # find the controller module and method to dispatch the URI
     $self->find_controller();

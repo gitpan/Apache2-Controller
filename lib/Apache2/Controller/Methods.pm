@@ -31,6 +31,8 @@ use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
 
+use Apache2::Controller::Version;
+
 use Apache2::Controller::X;
 use Apache2::Cookie;
 use YAML::Syck;

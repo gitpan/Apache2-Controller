@@ -27,13 +27,15 @@ boolean results of C<<$r->connection->aborted()>> and returns.
 use strict;
 use warnings FATAL => 'all';
 
+use Apache2::Controller::Version;
+
 use Apache2::Connection ();
 use Apache2::RequestRec ();
 use Apache2::Const -compile => qw( OK );
 
 sub handler {
     my ($r) = @_;
-    $r->notes->{connection_closed} = $r->connection->aborted();
+    $r->notes->{connection_closed} ||= $r->connection->aborted();
     return Apache2::Const::OK;
 }
 

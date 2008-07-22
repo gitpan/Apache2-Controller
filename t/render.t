@@ -11,7 +11,7 @@ use lib "$FindBin::Bin/lib";
 use Apache2::Controller::Test::Funk qw( diag );
 use YAML::Syck;
 
-plan tests => 4;
+plan tests => 5;
 
 my $url = "/render";
 
@@ -43,6 +43,13 @@ ok t_cmp(
     "This is a test of processing a relative file from TT.\n\n", 
     "relative processing test"
 );
+
+$url = "/render/multipath/test";
+$data = GET_BODY $url;
+ok t_cmp($data, "Render multiple path.\n\n", "render with multiple INCLUDE_PATH");
+
+
+
 
 __END__
 

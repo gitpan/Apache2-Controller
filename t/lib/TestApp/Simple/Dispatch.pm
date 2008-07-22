@@ -15,6 +15,4 @@ our %dispatch_map = (
     default     => 'TestApp::Simple::C::Top',
 );
 
-our @limit_http_methods = qw( GET POST );
-
 1;

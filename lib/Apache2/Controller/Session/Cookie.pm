@@ -25,22 +25,13 @@ a cookie.
 
 =over 4 
 
-=item A2CSessionCookieName
-
-=item A2CSessionCookieExpires
-
-See L<Apache2::Cookie> for valid fixed-duration strings.
-
-=item A2CSessionCookiePath
-
-Restrict the cookie path to something other than the default.
-
-=item A2CSessionCookieSecure
-
-Set the 'secure' flag on the cookie, which means it works only
-when transmitted by HTTPS.
+=item A2CSessionCookieOptions
 
 =back
+
+L<Apache2::Controller::Directives>
+
+L<Apache2::Cookie>
 
 =head1 METHODS
 
@@ -50,10 +41,12 @@ L<Apache2::Controller::Session> subclass.
 =cut
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use English '-no_match_vars';
 
 use base qw( Apache2::Controller::Session );
+
+use Apache2::Controller::Version;
 
 use Log::Log4perl qw(:easy);
 use Readonly;
@@ -78,8 +71,9 @@ Sets C<<$r->pnotes->{session_cookie}>> to be the Apache2::Cookie object.
 sub get_session_id {
     my ($self) = @_;
 
-    my $cookie_name = $self->get_directive('A2CSessionCookieName') 
-        || $DEFAULT_COOKIE_NAME;
+    my %copts = %{ $self->get_directive('A2CSessionCookieOptions') || { } }; 
+    $copts{name} ||= $DEFAULT_COOKIE_NAME;
+    my $cookie_name = $copts{name};
     
     my $jar = $self->get_cookie_jar();
 
@@ -113,11 +107,7 @@ sub set_session_id {
 
     my $directives = $self->get_directives();
 
-    my %copts 
-      = map {($_->[0] => $directives->{$_->[1]})}
-        grep exists $directives->{$_->[1]},
-        map [$_ => 'A2CSessionCookie'.ucfirst($_)],
-        qw( name expires secure domain path );
+    my %copts = %{ $self->get_directive('A2CSessionCookieOptions') || { } }; 
     $copts{name} ||= $DEFAULT_COOKIE_NAME;
 
     DEBUG(sub {"Creating session cookie with opts:\n".Dump(\%copts)});
