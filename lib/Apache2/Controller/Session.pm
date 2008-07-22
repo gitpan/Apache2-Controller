@@ -4,6 +4,14 @@ package Apache2::Controller::Session;
 
 Apache2::Controller::Session - Apache2::Controller PerlHeaderParserHandler for Apache::Session
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
 Set your A2C session subclass as a C<PerlHeaderParserHandler>.
@@ -206,8 +214,6 @@ use base qw(
     Apache2::Controller::NonResponseBase 
     Apache2::Controller::Methods 
 );
-
-use Apache2::Controller::Version;
 
 use YAML::Syck;
 use Log::Log4perl qw(:easy);

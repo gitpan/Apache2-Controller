@@ -4,6 +4,14 @@ package Apache2::Controller::Const;
 
 Apache2::Controller::Const - constants for Apache2::Controller
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
  use Apache2::Controller::Const 
@@ -23,8 +31,6 @@ use warnings FATAL => 'all';
 use Readonly;
 
 use base 'Exporter';
-
-use Apache2::Controller::Version;
 
 our @EXPORT_OK = qw(
     @RANDCHARS

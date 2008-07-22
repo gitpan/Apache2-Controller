@@ -61,7 +61,7 @@ my @requires = qw(
 ModPerl::MM::WriteMakefile(
     NAME            => 'Apache2::Controller',
     AUTHOR          => 'Mark Hedges <hedges@scriptdolphin.org>',
-    VERSION_FROM    => 'lib/Apache2/Controller/Version.pm',
+    VERSION_FROM    => 'lib/Apache2/Controller.pm',
     ABSTRACT_FROM   => 'lib/Apache2/Controller.pm',
     DISTNAME        => 'Apache2-Controller',
     PL_FILES        => { },

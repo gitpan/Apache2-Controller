@@ -4,6 +4,14 @@ package Apache2::Controller::SQL::Connector;
 
 Apache2::Controller::SQL::Connector - connects L<DBI|DBI> to C<<$r->pnotes->{dbh}>>.
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
 =head2 CONFIG ALTERNATIVE 1: APACHE CONF
@@ -57,8 +65,6 @@ use warnings FATAL => 'all';
 use English '-no_match_vars';
 
 use base qw( Apache2::Controller::NonResponseBase );
-
-use Apache2::Controller::Version;
 
 use Log::Log4perl qw(:easy);
 use YAML::Syck;

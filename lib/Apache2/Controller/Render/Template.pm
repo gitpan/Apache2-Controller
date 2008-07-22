@@ -4,6 +4,14 @@ package Apache2::Controller::Render::Template;
 
 Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
  # apache2 config file
@@ -122,8 +130,6 @@ in the stash for ease of use.
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
-
-use Apache2::Controller::Version;
 
 use Apache2::Const -compile => qw( SERVER_ERROR OK );
 use Apache2::Controller::X;

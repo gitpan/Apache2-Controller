@@ -4,6 +4,14 @@ package Apache2::Controller::Dispatch;
 
 Apache2::Controller::Dispatch - dispatch base class for Apache::Controller
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
  # vhost.conf:
@@ -118,8 +126,6 @@ use base qw(
     Apache2::Controller::NonResponseBase 
     Apache2::Controller::Methods 
 );
-
-use Apache2::Controller::Version;
 
 use Log::Log4perl qw(:easy);
 use Readonly;

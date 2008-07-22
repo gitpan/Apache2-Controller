@@ -1,16 +1,25 @@
 package Apache2::Controller::Uploads;
 
-use warnings FATAL => 'all';
-use strict;
-use Apache2::Controller::Version;
-
 =head1 NAME
 
 Apache2::Controller::Uploads - Upload method extensions.  UNIMPLEMENTED
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
 UNIMPLEMENTED.
+
+=cut
+
+use warnings FATAL => 'all';
+use strict;
 
 =head1 EXPORT
 

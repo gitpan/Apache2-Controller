@@ -5,6 +5,14 @@ package Apache2::Controller::Dispatch::RenderTemplate;
 Apache2::Controller::Dispatch::RenderTemplate -
 dispatch to controllers mapped by files in primary A2CRenderTemplatePath.
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
 UNIMPLMENTED - AN AMBITIOUS AND INTERESTING SPEC
@@ -77,8 +85,6 @@ whether a specific controller is found or not.
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
-
-use Apache2::Controller::Version;
 
 use Apache2::Const -compile => qw( HTTP_NOT_IMPLEMENTED );
 

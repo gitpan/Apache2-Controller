@@ -4,6 +4,14 @@ package Apache2::Controller::SQL::MySQL;
 
 Apache2::Controller::SQL::MySQL - useful database methods for MySQL
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
  package UFP::SFC::Controller::Tools;
@@ -68,8 +76,6 @@ Array ref of bind values for extra C<?> characters in C<on_dup_sql>.
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
-
-use Apache2::Controller::Version;
 
 sub insert_hash {
     my ($self, $p) = @_;

@@ -5,6 +5,14 @@ package Apache2::Controller::Dispatch::HashTree;
 Apache2::Controller::Dispatch::HashTree - 
 Hash tree dispatch for L<Apache2::Controller::Dispatch>
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
  <Location "/subdir">
@@ -66,8 +74,6 @@ use English '-no_match_vars';
 use Carp qw( confess );
 
 use base qw( Apache2::Controller::Dispatch );
-
-use Apache2::Controller::Version;
 
 use Apache2::Controller::X;
 use Apache2::Controller::Funk qw( controller_allows_method check_allowed_method );

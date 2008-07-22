@@ -7,6 +7,14 @@ package Apache2::Controller::Log::DetectAbortedConnection;
 Apache2::Controller::Log::DetectAbortedConnection -
 helper handler for detecting cancelled connections to the client.
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 DESCRIPTION
 
 You don't need to use this handler.
@@ -26,8 +34,6 @@ boolean results of C<<$r->connection->aborted()>> and returns.
 
 use strict;
 use warnings FATAL => 'all';
-
-use Apache2::Controller::Version;
 
 use Apache2::Connection ();
 use Apache2::RequestRec ();

@@ -4,6 +4,14 @@ package Apache2::Controller::Methods;
 
 Apache2::Controller::Methods - methods shared by Apache2::Controller modules
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
  package Apache2::Controller::SomeNewBrilliantPlugin;
@@ -30,8 +38,6 @@ yet or not.  (This package is used as a base by multiple handler stages.)
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
-
-use Apache2::Controller::Version;
 
 use Apache2::Controller::X;
 use Apache2::Cookie;

@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Apache2-Controller
-version:             0.101.110
+version:             0.101.111
 abstract:            framework for Apache2 handler apps
 license:             ~
 author:              

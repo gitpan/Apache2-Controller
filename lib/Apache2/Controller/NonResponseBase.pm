@@ -5,6 +5,14 @@ package Apache2::Controller::NonResponseBase;
 Apache2::Controller::NonResponseBase - internal base class for 
 non-response handlers in Apache2::Controller framework
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
 This is an INTERNAL base class and you don't need to use it.
@@ -41,8 +49,6 @@ processing the chain of handlers... we'll see.
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
-
-use Apache2::Controller::Version;
 
 use Log::Log4perl qw(:easy);
 use YAML::Syck;

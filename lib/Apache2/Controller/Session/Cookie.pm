@@ -4,6 +4,14 @@ package Apache2::Controller::Session::Cookie;
 
 Apache2::Controller::Session::Cookie - track a sessionid with a cookie in A2C
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
 See L<Apache2::Controller::Session> for detailed setup example.
@@ -45,8 +53,6 @@ use warnings FATAL => 'all';
 use English '-no_match_vars';
 
 use base qw( Apache2::Controller::Session );
-
-use Apache2::Controller::Version;
 
 use Log::Log4perl qw(:easy);
 use Readonly;

@@ -23,8 +23,6 @@ use English '-no_match_vars';
 
 use base 'Exporter';
 
-use Apache2::Controller::Version;
-
 our @EXPORT_OK = qw(
     diag
 );

@@ -4,6 +4,14 @@ package Apache2::Controller::X;
 
 Apache2::Controller::X - Exception::Class hierarchy for Apache2::Controller
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
  package MyApp::C::Foo;

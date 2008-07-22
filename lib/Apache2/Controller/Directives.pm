@@ -4,6 +4,14 @@ package Apache2::Controller::Directives;
 
 Apache2::Controller::Directives - server config directives for A2C
 
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
+
 =head1 SYNOPSIS
 
  # apache2 config file
@@ -19,8 +27,6 @@ Apache2::Controller::Directives - server config directives for A2C
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
-
-use Apache2::Controller::Version;
 
 use Carp qw( croak );
 use Log::Log4perl qw(:easy);

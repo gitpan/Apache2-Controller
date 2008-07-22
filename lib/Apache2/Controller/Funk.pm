@@ -1,6 +1,16 @@
+package Apache2::Controller::Funk;
+
 =head1 NAME
 
 Apache2::Controller::Funk
+
+=head1 VERSION
+
+Version 0.101.111 - BETA TESTING (ALPHA?)
+
+=cut
+
+our $VERSION = version->new('0.101.111');
 
 =head1 SYNOPSIS
 
@@ -17,15 +27,11 @@ queried futher using 'exists', which is very fast.
 
 =cut
 
-package Apache2::Controller::Funk;
-
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
 
 use base 'Exporter';
-
-use Apache2::Controller::Version;
 
 use Log::Log4perl qw( :easy );
 use Readonly;
