@@ -3,15 +3,15 @@ package Apache2::Controller::Dispatch::RenderTemplate;
 =head1 NAME
 
 Apache2::Controller::Dispatch::RenderTemplate -
-dispatch to controllers mapped by files in primary A2CRenderTemplatePath.
+dispatch to controllers mapped by files in primary A2C_Render_Template_Path.
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -30,7 +30,7 @@ and renders them with L<Apache2::Controller::Render::Template>.
  <Location '/'>
 
      # primary path looks like a web site; secondary 'cmp' = component templates:
-     A2CRenderTemplatePath   /myapp/html   /myapp/cmp
+     A2C_Render_Template_Path   /myapp/html   /myapp/cmp
 
      # what lib name do we prefix to the ucfirst()ed primary html files?
      A2CControllerLibs       MyApp::C
@@ -59,8 +59,8 @@ so that you can easily look at the raw files with a local browser.
 A URL with a corresponding file in /myapp/html will always render,
 whether a specific controller is found or not.
 
- Foo      @ALLOWED_METHODS is qw( default bar biz )
- Noz      @ALLOWED_METHODS is qw( default )
+ Foo      allowed_methods() is qw( default bar biz )
+ Noz      allowed_methods() is qw( default )
 
  /              => index.html, no controller 
                          ( would be MyApp::C::Default->default() )

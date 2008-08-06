@@ -8,7 +8,7 @@ package TestApp::HashTree::Dispatch;
 
 use base qw( Apache2::Controller::Dispatch::HashTree );
 
-our %dispatch_map = (
+sub dispatch_map { {
     foo => {
         default     => 'TestApp::HashTree::Foo',
         bar => {
@@ -16,7 +16,8 @@ our %dispatch_map = (
             baz         => 'TestApp::HashTree::Baz',
         },
     },
-);
+    default => 'TestApp::HashTree::Default',
+} }
 
 1;
 
@@ -51,48 +52,93 @@ my $tests = Load(q{
     foo:
         controller:         TestApp::HashTree::Foo
         method:             default
+        relative_uri:       foo
 
     'foo/bar':
         controller:         TestApp::HashTree::Foo
         method:             bar
+        relative_uri:       foo
 
     'foo/bar/zerm':
         controller:         TestApp::HashTree::Foo
         method:             bar
+        relative_uri:       foo
         path_args:
             - zerm
 
     'foo/bar/biz':
         controller:         TestApp::HashTree::Biz
+        relative_uri:       foo/bar/biz
         method:             default
 
     'foo/bar/baz/noz/wiz':
         controller:         TestApp::HashTree::Baz
         method:             noz
+        relative_uri:       foo/bar/baz
         path_args:
             - wiz
+
+    '/':
+        controller:         TestApp::HashTree::Default
+        method:             default
+        relative_uri:       ''
+
+    bar:
+        controller:         TestApp::HashTree::Default
+        method:             bar
+        relative_uri:       ''
+    
+    lame:
+        controller:         TestApp::HashTree::Default
+        method:             default
+        relative_uri:       ''
+
+    'bar/none/some':
+        controller:         TestApp::HashTree::Default
+        method:             bar
+        relative_uri:       ''
+        path_args:
+            - none
+            - some
+
+    'lame/lamer/lamest':
+        controller:         TestApp::HashTree::Default
+        method:             default
+        relative_uri:       ''
+        path_args:
+            - lame
+            - lamer
+            - lamest
 });
 
-for my $uri (sort keys %{$tests}) {
+URI:
+for my $uri ('/', sort keys %{$tests}) {
+    my $request_uri = $uri eq '/' ? '' : $uri;
     my $mock = Apache2::Controller::Test::Mockr->new(
         location            => '/subdir',
-        uri                 => "/$uri",
+        uri                 => "/subdir/$request_uri",
     );
     my $dispatcher = TestApp::HashTree::Dispatch->new($mock);
     my $controller;
     eval { $controller = $dispatcher->find_controller() };
+
     if (my $X = Exception::Class->caught('Apache2::Controller::X')) {
         DEBUG("$X: \n".$X->trace());
-        die "caught X (check logs): $X\n";
+        print "# caught X (check logs): $X\n";
     }
     elsif ($EVAL_ERROR) {
-        die "unknown error: $EVAL_ERROR\n";
+        print "# unknown error: $EVAL_ERROR\n";
     }
 
     my $notes = $mock->notes;
 
-    is($notes->{$_} => $tests->{$uri}{$_}, "$uri $_") for qw( controller method );
+    is($notes->{$_} => $tests->{$uri}{$_}, "$uri $_") 
+        for qw( controller method relative_uri );
 
+    if ($tests->{$uri}{path_args}) {
+        my $pnotes = $mock->pnotes;
+        is_deeply($pnotes->{path_args}, $tests->{$uri}{path_args}, "$uri path_args");
+    }
 }
 
 

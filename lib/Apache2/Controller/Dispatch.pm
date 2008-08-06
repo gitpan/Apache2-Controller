@@ -6,13 +6,58 @@ Apache2::Controller::Dispatch - dispatch base class for Apache::Controller
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
+
+Synopsis examples use L<Apache2::Controller::Dispatch::Simple>,
+but you may want to check out L<Apache2::Controller::Dispatch::HashTree>
+or write your own.  All use the C<< A2C_Dispatch_Map >> directive,
+but the hash structure differs between subclasses.
+
+=head2 EASY WAY
+
+This only works if you have one website on the whole server (under forked mpm)
+because the intepreter only loads the module once and then it won't
+load another dispatch map for other uri's.  
+
+ # vhost.conf:
+ <Location />
+     SetHandler modperl
+     A2C_Dispatch_Map   /path/to/yaml/syck/dispatch/hash/file.yaml
+     PerlInitHandler    Apache2::Controller::Dispatch::Simple
+ </Location>
+
+=head2 NORMAL WAY
+
+The normal way supports many separate dispatch maps on a server,
+but each application must subclass a dispatch class, even if it
+has no methods.
+
+ # vhost.conf:
+ PerlLoadModule MyApp::Dispatch;
+ <Location />
+     SetHandler modperl
+     A2C_Dispatch_Map   /etc/myapp/dispatch.yaml
+     PerlInitHandler    MyApp::Dispatch
+ </Location>
+
+ # /etc/myapp/dispatch.yaml:
+ foo:       MyApp::Controller::Foo
+ bar:       MyApp::Controller::Bar
+ biz:       MyApp::C::Biz
+ 'biz/baz': MyApp::Controller::Biz::Baz
+
+ # lib/MyApp/Dispatch.pm:
+ package MyApp::Dispatch;
+ use base qw( Apache2::Controller::Dispatch::Simple );
+ 1;
+
+=head2 HARD WAY
 
  # vhost.conf:
  PerlModule MyApp::Dispatch
@@ -22,7 +67,7 @@ our $VERSION = version->new('0.101.111');
      PerlInitHandler MyApp::Dispatch
  </Location>
 
- # lib/MyApp/Dispatch:
+ # lib/MyApp/Dispatch.pm:
 
  package MyApp::Dispatch;
 
@@ -31,12 +76,15 @@ our $VERSION = version->new('0.101.111');
 
  use base qw( Apache2::Controller::Dispatch::Simple );
 
- our %dispatch_map = (
+ # return a hash reference from dispatch_map()
+ sub dispatch_map { return {
      foo        => 'MyApp::C::Foo',
      bar        => 'MyApp::C::Bar',
      biz        => 'MyApp::C::Biz',
      'biz/baz'  => 'MyApp::C::Biz::Baz',
- );
+ } }
+
+ # or use directive A2C_Dispatch_Map to refer to a YAML file.
 
  1;
  
@@ -49,32 +97,51 @@ libraries based on their URL.
 You don't use this module.  You use one of its subclasses
 as a base for your dispatch module.
 
-=for comment
+=head1 WHY A MAP?
 
 Natively, this does not try to figure out the appropriate
 module using any complex magic.  Instead, you spell out the
-uris under the root handler location and what controller
-modules you want to handle paths under that URL, using the
-C<<A2CController>> directive.
+uris under the handler location and what controller
+modules you want to handle paths under that URL, using a
+directive. (L<Apache2::Controller::Directives/A2C_Dispatch_Map>)
 
-(future implementation
+The trouble with automatic controller module detectors is
+that parsing the URI and doing C<< eval "use lib $blah" >>
+up through the URI path is that is computationally expensive.
 
-=cut
+Maintaining a URI map file is not that difficult and also is
+convenient because you can move libraries around, point different
+URI's to the same controller library, etc.  For example to bring
+part of your site off-line and see 'under construction', create
+a controller to print the right message, change all the uri's
+in the map and bump the server.  
+
+(Can I trap a signal so it 
+clears and reloads map files if Apache2 is HUP'd?  That would be cool.
+Or a timeout that would cause children to reload the file.)
+
+Different dispatch types use different structure in the
+map, but it is conceptually the same.  The structure is
+loaded into memory and then the uri can be parsed very
+quickly to locate the correct controller.
 
 =head1 SUBCLASSES
 
-Subclasses of this module implement C<<find_controller()>>
+Subclasses of this module implement C<< find_controller() >>
 in different ways, usually interpreting the URI from a
-hash called C<<%dispatch_map>> in your subclass.
+hash reference returned by C<< dispatch_map() >> in your subclass.
+Or, if you provide the directive C<< A2C_Dispatch_Map >> to specify
+a map file, this module will load it with L<YAML::Syck/LoadFile>.
 
 See L<Apache2::Controller::Dispatch::Simple> and
 L<Apache2::Controller::Dispatch::HashTree> for other
 dispatch possibilities.
 
 Any implementation of find_controller() should throw an 
-L<Apache2::Controller::X> with http => Apache2::Const::NOT_FOUND in the
+L<Apache2::Controller::X> with status C<< Apache2::Const::NOT_FOUND >>
+in the
 event that the detected method selected does not appear in the list of
-C<@ALLOWED_METHODS> in the controller module.  
+C<< allowed_methods() >> in the controller module.  
 See L<Apache2::Controller::Funk/check_allowed_method>
 
 Successful run of find_controller() should result in four items of
@@ -113,8 +180,6 @@ In the example above for notes->{relative_uri}, this is [ 'biz', 'zip' ].
 @path_args is the array of remaining elements.  For example if your
 dispatch map contains the URI 'foo', and the incoming URI was '/foo/bar/baz',
 then $r->pnotes->{path_args} should be ['bar', 'baz'] before returning.
-
-
 
 =cut
 
@@ -176,10 +241,32 @@ sub process {
     return Apache2::Const::OK;
 }
 
+=head2 dispatch_map
+
+The base class method relies on having directive C<< A2C_Dispatch_Map >>.
+This loads a L<YAML::Syck> file at server startup for every instance
+of the directive.  This is your best bet if you want to use a file,
+because the file will be loaded only once, instead of every time a 
+mod_perl child process spawns.
+
+If you want to return a hash yourself, overload this in a 
+dispatch subclass.
+
+=cut
+
+sub dispatch_map {
+    my ($self) = @_;
+    return $self->get_directive('A2C_Dispatch_Map')
+        || Apache2::Controller::X->throw("No directive A2C_Dispatch_Map");
+}
+
 =head2 get_dispatch_map
 
-Get the cached %dispatch_map of the dispatch handler object's class.
-Caches hashes here in parent package space and checks with C<<exists>>.
+Get the cached C<< \%dispatch_map >> of the dispatch handler object's class.
+Caches references here in parent package space and checks with C<< exists >>.
+
+In your dispatch subclass, you define C<< dispatch_map() >> which 
+returns a hash reference of the dispatch map. 
 
 =cut
 
@@ -188,10 +275,19 @@ sub get_dispatch_map {
     my ($self) = @_;
     my $class = $self->{class};
     return $dispatch_maps{$class} if exists $dispatch_maps{$class};
-    my $dispatch_map;
-    eval '$dispatch_map = \%'.$class.'::dispatch_map';
+
+    my $dispatch_map = $self->dispatch_map();
+
+    Apache2::Controller::X->throw("No dispatch_map() in $class") if !$dispatch_map;
+
+    my $ref = ref $dispatch_map;
+    Apache2::Controller::X->throw("Bad dispatch_map() in $class") 
+        if !defined $ref || $ref ne 'HASH';
+
     $dispatch_maps{$class} = $dispatch_map;
+
     DEBUG(sub{"dispatch_maps:".Dump(\%dispatch_maps)});
+
     return $dispatch_map;
 }
 
@@ -211,17 +307,20 @@ sub get_dispatch_map {
 
  my @LIMIT_HTTP_METHODS = qw( GET );
 
- our %dispatch_map = (
+ sub dispatch_map { {                   # return a hash reference
      foo        => 'MyApp::C::Foo',
      bar        => 'MyApp::C::Bar',
      biz        => 'MyApp::C::Biz',
- );
+ } }
 
  1;
 
 =head1 SEE ALSO
 
-L<Apache2::Controller::Dispatch::Simple>,
+L<Apache2::Controller::Dispatch::HashTree>
+
+L<Apache2::Controller::Dispatch::Simple>
+
 L<Apache2::Controller>
 
 =head1 AUTHOR

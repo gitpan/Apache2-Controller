@@ -10,10 +10,10 @@ use base qw(
 
 use Log::Log4perl qw(:easy);
 
-our %dispatch_map = (
+sub dispatch_map { {
     default     => 'TestApp::Render::Controller',
     foo         => 'TestApp::Render::C::Foo',
     multipath       => 'TestApp::Render::C::Multipath',
-);
+} }
 
 1;

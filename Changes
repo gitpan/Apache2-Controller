@@ -1,5 +1,15 @@
 Revision history for Apache2-Controller
 
+0.110.000   2008-08-06
+
+            Removing the "RUN_ALL" simulated mode from response handler.
+            It's an over-optimization, and A2C:DBI::Connector supports
+            a PerlCleanupHandler to rollback uncommitted transactions.
+            Now Controller.pm does not return DONE, but sets status
+            and returns OK.
+            
+            Apache2::Controller::DBI::Connector works.  Cool!
+
 0.101.111   2008-07-22T18:01:00
             LAME LAME LAME I hate versions.
 

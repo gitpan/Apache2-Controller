@@ -1,4 +1,4 @@
-package TestApp::HashTree::Foo;
+package TestApp::HashTree::Default;
 use base qw( Apache2::Controller );
 sub allowed_methods {qw( default bar )}
 sub default {

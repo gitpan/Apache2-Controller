@@ -6,11 +6,11 @@ Apache2::Controller::Session::Cookie - track a sessionid with a cookie in A2C
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -33,7 +33,7 @@ a cookie.
 
 =over 4 
 
-=item A2CSessionCookieOptions
+=item A2C_Session_Cookie_Opts
 
 =back
 
@@ -77,7 +77,7 @@ Sets C<<$r->pnotes->{session_cookie}>> to be the Apache2::Cookie object.
 sub get_session_id {
     my ($self) = @_;
 
-    my %copts = %{ $self->get_directive('A2CSessionCookieOptions') || { } }; 
+    my %copts = %{ $self->get_directive('A2C_Session_Cookie_Opts') || { } }; 
     $copts{name} ||= $DEFAULT_COOKIE_NAME;
     my $cookie_name = $copts{name};
     
@@ -113,7 +113,7 @@ sub set_session_id {
 
     my $directives = $self->get_directives();
 
-    my %copts = %{ $self->get_directive('A2CSessionCookieOptions') || { } }; 
+    my %copts = %{ $self->get_directive('A2C_Session_Cookie_Opts') || { } }; 
     $copts{name} ||= $DEFAULT_COOKIE_NAME;
 
     DEBUG(sub {"Creating session cookie with opts:\n".Dump(\%copts)});

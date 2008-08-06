@@ -7,11 +7,11 @@ Hash tree dispatch for L<Apache2::Controller::Dispatch>
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -27,7 +27,8 @@ our $VERSION = version->new('0.101.111');
      Apache2::Controller::Dispatch::HashTree
  );
 
- our %dispatch_map = (
+ # return a hash reference from dispach_map()
+ sub dispatch_map { return {
     foo => {
         default     => 'MyApp::C::Foo',
         bar => {
@@ -35,7 +36,8 @@ our $VERSION = version->new('0.101.111');
             baz         => 'MyApp::C::Baz',
         },
     },
- );
+    default => 'MyApp::C::Default',
+ } }
 
  1;
  __END__
@@ -94,44 +96,56 @@ sub find_controller {
     my $r = $self->{r};
     my $location = $r->location();
     my $uri = $r->uri();
+    my $uri_below_loc = substr $uri, length $location;
 
     DEBUG(sub{Dump({
         uri             => $uri,
+        uri_below_loc   => $uri_below_loc,
         location        => $location,
     })});
 
     # efficiently split up the uri into an array of path parts
     my @path;
     my $j = 0;
-    my $uri_len = length $uri;
+    my $uri_len = length $uri_below_loc;
+    my $last_char_idx = $uri_len - 1;
     my $prev_char = q{};
+    my $uri_without_leading_slash = '';
     CHAR:
-    for (my $i = 1; $i < $uri_len; $i++) {
-        my $char = substr $uri, $i, 1;
+    for (my $i = 0; $i <= $last_char_idx; $i++) {
+        my $char = substr $uri_below_loc, $i, 1;
+        DEBUG(sub { "j=$j; char $i = '$char' (".ord($char).")" });
         if ($char eq '/') {
+            # skip over first /
+            if ($i == 0) {
+                $prev_char = $char;
+                next CHAR;
+            }
+
             # skip over repeat //'s
             next CHAR if $char eq $prev_char;
+
+            # skip a trailing /
+            last CHAR if $i == $last_char_idx;
+
+            # not skipped, so iterate the path counter
             $j++;
         }
         else {
             $path[$j] .= $char;
+            DEBUG("added $char to path[$j] ($path[$j])");
         }
         $prev_char = $char;
+        $uri_without_leading_slash .= $char;
     }
-    $uri = substr $uri, 1 if $uri_len;
+    $uri_below_loc = $uri_without_leading_slash;
+    DEBUG("uri_below_loc is now $uri_below_loc");
 
     # follow these keys through the hash and push remaining path parts
     # to an array for after we're done searching for the method
-    my @path_hash_elems;
-    my @path_args;
     my $node = $dispatch_map;
-    push @path_hash_elems, $node;
-    my $path_count = scalar @path;
-    my $path_last_idx = $#path;
 
-    my %results = ();
-
-    my @defaults;
+    DEBUG(sub{"path: (@path)"});
 
     my @trace_path;
     @trace_path = map { 
@@ -139,8 +153,11 @@ sub find_controller {
             ? do { $node = $node->{$_}; $node }
             : undef
     } @path;
-    DEBUG(sub{"LAME:\n".Dump(\@trace_path)});
+    DEBUG(sub{"dispatch hash trace_path:\n".Dump(\@trace_path)});
     
+    my %results = ();
+    my @path_args;
+
     FIND_NODE:
     for (my $i = $#trace_path; $i >= 0; $i--) {
 
@@ -150,7 +167,7 @@ sub find_controller {
 
         my $part = $path[$i];
 
-        DEBUG(sub { "part = '$part', i = $i, node = ".Dump($node) });
+        DEBUG(sub { "part = '$part', i = $i, path=(@path), node = ".Dump($node) });
 
         my $ref  = ref $node;
 
@@ -167,16 +184,18 @@ sub find_controller {
             &&  controller_allows_method($maybe_controller => $maybe_method)
             ) {
             # got it!
-            $results{controller} = $maybe_controller;
-            $results{method}     = $maybe_method;
-            @path_args  = @path[ $i + 2 .. $#path ];
+            $results{controller}    = $maybe_controller;
+            $results{method}        = $maybe_method;
+            $results{relative_uri}  = join('/', @path[ 0 .. $i ]);
+            @path_args              = @path[ $i + 2 .. $#path ];
             last FIND_NODE;
         }
         else {  # maybe 'default' here?
             if (controller_allows_method($maybe_controller => 'default')) {
-                $results{controller} = $maybe_controller;
-                $results{method}     = 'default';
-                @path_args  = @path[ $i + 1 .. $#path ];
+                $results{controller}    = $maybe_controller;
+                $results{method}        = 'default';
+                $results{relative_uri}  = join('/', @path[ 0 .. $i ]);
+                @path_args              = @path[ $i + 1 .. $#path ];
                 last FIND_NODE;
             }
             else {
@@ -186,19 +205,48 @@ sub find_controller {
         }
     }
 
+    # if still no controller, select the default
+    if (!$results{controller}) {
+        my $ctrl = $dispatch_map->{default};
+        Apache2::Controller::X->throw("$uri no default controller") if !$ctrl;
+        Apache2::Controller::X->throw(
+            "$uri no references allowed in dispatch_map for default"
+        ) if ref $ctrl;
+        $results{controller} = $ctrl;
+
+        # and find a method.
+        my $maybe_method = $path[0];
+        if  (   $maybe_method 
+            &&  controller_allows_method($results{controller}, $maybe_method)
+            ) {
+            $results{method} = $maybe_method;
+            @path_args = @path[ 1 .. $#path ] if exists $path[1];
+        }
+        elsif (controller_allows_method($results{controller}, 'default')) {
+            $results{method} = 'default';
+            @path_args = @path[ 0 .. $#path ] if exists $path[0];
+        }
+        else {
+            Apache2::Controller::X->throw(
+                "$uri cannot find a working method in $results{controller}"
+            );
+        }
+
+        # relative uri is ''
+        $results{relative_uri} = '';
+    }
+
     DEBUG(sub{Dump({
         path_args => \@path_args,
         results => \%results,
     })});
 
-    my @result_keys = keys %results;
-
     # make sure this worked
     Apache2::Controller::X->throw("did not detect $_")
-        for grep !exists $results{$_}, @result_keys;
+        for grep !exists $results{$_}, qw( controller method relative_uri );
 
     # save the info in notes
-    $r->notes->{$_} = $results{$_} for @result_keys;
+    $r->notes->{$_} = $results{$_} for keys %results;
 
     $r->pnotes->{path_args}         = \@path_args;
 

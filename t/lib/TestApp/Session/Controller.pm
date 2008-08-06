@@ -14,7 +14,7 @@ use Apache2::Const -compile => qw(HTTP_OK);
 use Log::Log4perl qw(:easy);
 use YAML::Syck;
 
-Readonly our @ALLOWED_METHODS => qw( set read );
+sub allowed_methods {qw( set read )}
 
 sub set {
     my ($self) = @_;

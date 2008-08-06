@@ -46,6 +46,7 @@ my @requires = qw(
     FindBin
     HTML::Entities
     HTTP::Status
+    IPC::Open3
     List::MoreUtils
     Log::Log4perl
     Readonly

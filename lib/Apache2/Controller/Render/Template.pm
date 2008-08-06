@@ -6,33 +6,33 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
  # apache2 config file
 
  PerlLoadModule Apache2::Controller::Directives
- PerlLoadModule Apache2::Controller::SQL::Connector
+ PerlLoadModule Apache2::Controller::DBI::Connector
 
  # location of templates - must be defined
- A2CRenderTemplatePath  /var/myapp/templates /var/myapp/template_components
+ A2C_Render_Template_Path  /var/myapp/templates /var/myapp/template_components
 
  <Location /foo>
     SetHandler modperl
     PerlInitHandler             MyApp::Dispatch::Foo
 
     # set directives A2C_DBI_DSN, etc. 
-    PerlHeaderParserHandler     Apache2::Controller::SQL::Connector
+    PerlHeaderParserHandler     Apache2::Controller::DBI::Connector
  </Location>
 
 See L<Apache2::Controller::Dispatch> for A2C Dispatch implementations.
 
-See L<Apache2::Controller::Directives> and L<Apache2::Controller::SQL::Connector>.
+See L<Apache2::Controller::Directives> and L<Apache2::Controller::DBI::Connector>.
 
  package MyApp::C::Bar;  # let's assume this controller was dispatched
 
@@ -46,7 +46,7 @@ See L<Apache2::Controller::Directives> and L<Apache2::Controller::SQL::Connector
 
  use Apache2::Const -complie => qw( OK );
 
- my @ALLOWED_METHODS = qw( default );
+ sub allowed_methods {qw( default )}
 
  sub default {
     my ($self, @first, @last) = @_;
@@ -91,12 +91,12 @@ You can specify options for L<Template> in one of two ways:
 =head2 DIRECTIVES
 
 By using 
-L<Apache2::Controller::Directives/A2CRenderTemplateOpts>:
+L<Apache2::Controller::Directives/A2C_Render_Template_Opts>:
 
  <Location '/foo'>
-     A2CRenderTemplateOpts INTERPOLATE 1
-     A2CRenderTemplateOpts PRE_PROCESS header
-     A2CRenderTemplateOpts POST_CHOMP  1
+     A2C_Render_Template_Opts INTERPOLATE 1
+     A2C_Render_Template_Opts PRE_PROCESS header
+     A2C_Render_Template_Opts POST_CHOMP  1
  </Location>
 
 =head2 METHOD template_options()
@@ -105,7 +105,7 @@ Or by implementing C<<template_options>> in your controller:
 
  package MyApp::Controller;
  use base qw( Apache2::Controller Apache2::Controller::Render::Template );
- my @ALLOWED_METHODS = qw( default );
+ sub allowed_methods {qw( default )}
 
  sub template_options {
      my ($self) = @_;
@@ -323,8 +323,8 @@ sub error {
     $self->{stash}{status_line} = $status_line;
     $self->{stash}{status} = $status;
 
-    my $template_dir = $self->get_directive('A2CRenderTemplatePath')
-        || Apache2::Controller::X->throw('A2CRenderTemplatePath not defined.');
+    my $template_dir = $self->get_directive('A2C_Render_Template_Path')
+        || Apache2::Controller::X->throw('A2C_Render_Template_Path not defined.');
     if (exists $error_templates{$template_dir}{$status_file}) {
 
         my $template = $error_templates{$template_dir}{$status_file};
@@ -393,12 +393,12 @@ To override the auto-select template, just set $self->{template}
 before you call C<<render()>>.
 
 It looks for templates in a computed directory.  The directory where it
-looks will always be the directory set with the A2CRenderTemplatePath 
+looks will always be the directory set with the A2C_Render_Template_Path 
 directive in the config file, appended with the current request location,
 i.e. the directory of the Location directive in the config file, 
 appended with relative_uri, appended with method name and '.html'.
 
- A2CRenderTemplatePath + location + relative_uri + method.html
+ A2C_Render_Template_Path + location + relative_uri + method.html
 
 For example, the sequence in SYNOPSIS above renders the file 
 C</var/myapp/templates/foo/default.html> .
@@ -480,9 +480,9 @@ sub detect_template {
 =head2 get_tt_obj
 
 Get the L<Template> object set up with the appropriate include directory
-set from the directive C<<A2CRenderTemplatePath>>.
+set from the directive C<<A2C_Render_Template_Path>>.
 
-Directive C<A2CRenderTemplateOpts> sets default C<new()>
+Directive C<A2C_Render_Template_Opts> sets default C<new()>
 options for L<Template>.  
 
 =cut
@@ -492,8 +492,8 @@ my %tts = ();
 sub get_tt_obj {
     my ($self) = @_;
 
-    my $include_path = $self->get_directive('A2CRenderTemplatePath')
-        || Apache2::Controller::X->throw("A2CRenderTemplatePath not defined");
+    my $include_path = $self->get_directive('A2C_Render_Template_Path')
+        || Apache2::Controller::X->throw("A2C_Render_Template_Path not defined");
 
     my $class = $self->{class};
     $implements_template_opts{$class} = $self->can('template_opts')
@@ -502,7 +502,7 @@ sub get_tt_obj {
     my %opts 
         = $implements_template_opts{$class}
         ? %{ $self->template_opts() }
-        : %{ $self->get_directive('A2CRenderTemplateOpts') || { } };
+        : %{ $self->get_directive('A2C_Render_Template_Opts') || { } };
 
     $opts{INCLUDE_PATH} 
         = !$opts{INCLUDE_PATH}    ? $include_path

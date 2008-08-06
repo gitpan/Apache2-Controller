@@ -6,11 +6,11 @@ Apache2::Controller - framework for Apache2 handler apps
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -26,8 +26,7 @@ method for the uri.
  use base qw( Apache2::Controller );
 
  use Apache2::Const -compile => qw( :http );
- use Readonly;
- Readonly our @ALLOWED_METHODS => qw( default bar baz );
+ sub allowed_methods {qw( default bar baz )}
 
  # suppose '/foo' is the uri path dispatched to this controller
  # and your dispatch uses L<Apache2::Controller::Dispatch::Simple>
@@ -42,8 +41,11 @@ method for the uri.
 
  # http://myapp.xyz/foo/bar/biz/schnozz
  sub bar {
-     my ($self, @path_args) = @_;             # @path_args = qw( biz schnozz )
-     # @path_args = @{ $self->{path_args} };  # \@path_args in self, also pnotes
+     my ($self, @path_args) = @_;             
+     # @path_args is:
+     #      qw( biz schnozz )
+     #      @{ $self->{path_args} }
+     #      @{ $self->pnotes->{path_args} }
 
      $self->content_type('text/html');
      $self->print(q{ <p>"WE ARE ALL KOSH"</p> });
@@ -66,7 +68,7 @@ method for the uri.
      return Apache2::Const::HTTP_OK;
  }
 
-1;
+ 1;
 
 You could implement a pretty nice REST interface, or any other kind
 of HTTP-based API, by returning the appropriate HTTP status codes.
@@ -80,12 +82,13 @@ for your controller class to render HTML with L<Template> Toolkit.
 Apache2::Controller is a lightweight controller framework for 
 object-oriented applications designed to run only under mod_perl 
 children in high-performance Apache2 handler modules.  It features URL 
-dispatch with flexible configuration, auth plugins for OpenID, a cookie 
-session and MySQL store, a pluggable infrastructure for your own models 
-and views, and base inheritance configuration allowing you to 
+dispatch with flexible configuration, auth plugins, a cookie tracker
+for Apache::Session, liberty for any storage models that work under mod_perl,
+rendering using Template Toolkit or direct printing with Apache,
+and base inheritance configuration allowing you to 
 construct your applications as you need, without trying to be all things 
-to all people or assimilate the world, and without having to load all 
-site modules for every page handler. It is intended as a framework for 
+to all people or assimilate the world.  
+It is intended as a framework for 
 new applications specialized as Apache2 handlers, not as a means to 
 absorb existing applications or to create portable code.  
 
@@ -161,9 +164,13 @@ Some other request phase handlers register later-stage handlers,
 for example to save the session with a C<PerlCleanupHandler>
 after the controller successfully completes the C<Response> phase.
 
-These handlers for other stages will return DECLINED or DONE if 
+Handlers before the response stage will return DECLINED or DONE if 
 necessary to prevent running your Apache2::Controller in the
-case of an error.
+case of an error.  If so, no further handlers will be run,
+such as for the PerlCleanupHandler stage.
+
+The controller handler always returns your set HTTP status code
+or OK (0) to Apache.  (Does this mean PerlCleanupHandlers will run?)
 
 Add handlers in your config file with your own modules which 
 C<use base> to inherit from these classes as you need them:
@@ -339,9 +346,8 @@ object which isa Apache2::Controller::X::Redirect.
 
  Apache2::Controller::X::Redirect->throw("http://perl.apache.org");
 
-Apache2::Controller::handler() will trap the exception, terminate
-the response chain with C<DONE>, and send redirects on their way.  
-See L<Apache2::Controller::X>.
+Apache2::Controller::handler() will trap the exception
+and send redirects on their way.  See L<Apache2::Controller::X>.
 
 If you don't want to terminate the response chain, maybe you can set
 C<<$self->status(REDIRECT)>> and C<<$self->headers_out->{Location}>>...
@@ -381,21 +387,33 @@ child interpreter.  So,
 you can use package namespace effectively to store data
 that will persist in the mod_perl child across requests.
 
-=head1 WARNINGS AND CAVEATS
+=head1 LOAD BALANCING
 
-=head2 Handle errors appropriately
+A2C does not have to load 
+all site modules for every page handler, which could help with load-balancing
+highly optimized handlers for specific URI's while having a universal
+application installer.  
 
-If you return an error code of 400 HTTP_BAD_REQUEST or higher,
-Apache2::Controller will return DONE instead of OK, so Apache2
-will not process any further handlers in the stack but will
-end the request right here.
+Picture if you will, a programming utopia in which all engineers
+are respected, highly paid and content.  
 
-So, it's up to you in your controllers to use C<eval { }> appropriately
-and deal with errors, for instance, if your database transaction
-goes awry, it's up to you to roll back a transaction in the 
-controller module.  Don't push a PerlCleanupHandler to do that,
-though it's tempting to do so, because if you return an error code
-from the controller method, the PerlCleanupHandler will not run.
+You deploy the same Apache, the
+same CPAN modules and your whole application package to every server,
+and attach a url-generating subroutine to the L<Template|Template> stash
+that puts in a different hostname when the URI is one of your
+load-intensive functions.  
+
+ <a href="[% myurl('/easy') %]">easy</a> "http://pony.x.y/easy"
+
+ <a href="[% myurl('/hard') %]">hard</a> "http://packhorse.x.y/hard"
+
+Web designers can be taught to use this function C<< myurl() >>, 
+but system admins
+maintain the map that it loads to figure out what servers to use.
+
+Then the Apache2 config files on those
+packhorse servers would pre-load only the subclassed controllers
+that you needed, and redirect all other uri requests to the pony servers.
 
 =cut
 
@@ -561,20 +579,6 @@ An HTTP status code of HTTP_BAD_REQUEST or greater will
 cause log_reason to be called with a truncated error string
 and the uri for recording in the access log.
 
-=head3 RUN_ALL mode
-
-In the odd chance you plan to push further PerlResponseHandlers
-from your controller or server config, maybe to print
-debugging data at the end in HTML comments for instance, 
-then you need to set a boolean directive (temporarily a C<PerlSetVar>
-variable)
-called C<A2CRunAllResponseHandlers>. Then C<Apache2::Controller>
-will check Apache's stack of PerlResponseHandlers for the Response
-phase of the request lifecycle, to see whether you have pushed
-more response handlers to the stack, and if so will run them.
-Otherwise, the Response phase will stay in default RUN_FIRST 
-mode and no pushed PerlResponseHandlers will be executed.
-
 =cut
 
 my %supports_error_method = ( );
@@ -587,17 +591,19 @@ sub handler : method {
 
     DEBUG("$class -> $method");
 
-    my ($handler, $run_all, $status, $X) = ( );
+    my ($handler, $status, $X) = ( );
     eval {
 
         $handler = $class->new($r);
-        $run_all = $handler->get_directive('A2CRunAllResponseHandlers');
         $method  = $handler->{method};
 
         DEBUG("executing $class -> $method()");
         my $args = $r->pnotes->{path_args} || [];
         $status = $handler->$method(@{$args});
         $status = $handler->status() if !defined $status;
+
+        Apache2::Controller::X->throw("must set http status >= 0") 
+            if defined $status && $status < 0;
     };
     if ($X = $EVAL_ERROR) {
         my $ref = ref($X);
@@ -657,46 +663,36 @@ sub handler : method {
         "content type is ".($ctype || '[undef]');
     });
     
-    $status ||= Apache2::Const::HTTP_OK;
-    $r->status($status);
+    $r->status($status) if $status;
 
     DEBUG(sub { 
-        "status: $status ".status_message($status)
-        .", status_line for ".$r->status." is '".$r->status_line()."'"
+        my $stat  = defined $status ? $status : '';
+        my $sline = $r->status_line() || '[none]';
+        "status: $status "
+        .($status ? status_message($status) : 'N/A')
+        .", status_line is '$sline'";
     });
 
-    # if status is an erorr, file error (possibly truncated) as a 
-    # log_reason in the access log for why this request was denied.
-    if ($status >= Apache2::Const::HTTP_BAD_REQUEST) {
+    if (!defined $status) {
+        return Apache2::Const::OK;
+    }
+    elsif ($status >= Apache2::Const::HTTP_BAD_REQUEST) {
+        # if status is an error, file error (possibly truncated) as a 
+        # log_reason in the access log for why this request was denied.
+        # (is this desirable?)
         log_bad_request_reason($r, $X);
         $r->status_line("$status ".status_message($status)) 
             if !$r->status_line;
-        return Apache2::Const::OK;
-    }
-    elsif ($run_all) {
-        # return OK or DECLINED depending on whether the controller module
-        # or apache config pushed any further handlers.  essentially switch
-        # further PerlResponseHandlers from RUN_FIRST to RUN_ALL mode.
-        my @resp_handlers = map { eval { $_->() } } 
-            @{ $r->get_handlers('PerlResponseHandler') || [ ] };
-
-        my $last_resp_h = $resp_handlers[-1];
-
-        return defined $last_resp_h && $last_resp_h eq $class
-            ? Apache2::Const::OK
-            : Apache2::Const::DECLINED;
-        
-        return Apache2::Const::OK;
+        return $status;
     }
     else {
-        return Apache2::Const::OK;
+        return $status == Apache2::Const::HTTP_OK
+            ? Apache2::Const::OK
+            : $status;
     }
 
     # supposedly you can return the http status, but it doesn't work right
     # if you return HTTP_OK.  shouldn't it?
-    # i prefer to directly control what is happening
-    # by setting the status and then telling Apache whether
-    # to continue or to stop processing the request if not.
 }
 
 =head1 USING INHERITANCE
@@ -720,7 +716,7 @@ they should add a line to call a shared cleanup method.
 
  package MyApp::C::Foo;
  use base qw( Apache2::Controller MyApp::Cleanup );
- my @ALLOWED_METHODS = qw( foo bar );
+ sub allowed_methods {qw( foo bar )}
 
  sub foo {
      # ...
@@ -765,7 +761,7 @@ L<Apache2::Controller::Uploads>
 
 L<Apache2::Controller::Session>
 
-L<Apache2::Controller::SQL::Connector>
+L<Apache2::Controller::DBI::Connector>
 
 L<Apache2::Controller::Auth::OpenID>
 

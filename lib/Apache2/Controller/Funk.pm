@@ -6,11 +6,11 @@ Apache2::Controller::Funk
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -57,7 +57,8 @@ Readonly my $ACCESS_LOG_REASON_LENGTH => 60;
 
  $bool = controller_allows_method($class, $method); # controller_allows_method()
 
-Ask if method name is in @ALLOWED_METHODS in the given controller package.
+Ask if method name is returned by C<< allowed_methods() >>
+in the given controller package.
 
 Only two 'exists' calls are required for each query after caching the 
 first result for this child.
@@ -89,13 +90,10 @@ sub controller_allows_method {
         Apache2::Controller::X->throw("$class is not an Apache2::Controller")
             unless $isa_a2c;
 
-        my @allowed_methods = ( );
-        my $stmt = '@allowed_methods = @'.$class.'::ALLOWED_METHODS;';
-        DEBUG("stmt: '$stmt'");
-        eval $stmt;
-        Apache2::Controller::X->throw(
-            "$class does not have \@ALLOWED_METHODS: $EVAL_ERROR"
-        ) if $EVAL_ERROR;
+        Apache2::Controller::X->throw("$class knows no allowed_methods()")
+            unless $class->can('allowed_methods');
+
+        my @allowed_methods = $class->allowed_methods();
 
         DEBUG("allowed_methods: (@allowed_methods)");
         $allowed_methods{$class} = { map {($_=>1)} @allowed_methods };
@@ -109,7 +107,7 @@ sub controller_allows_method {
  check_allowed_method($method, $class); # check_allowed_method()
 
 Throw a NOT_FOUND exception if the method is not an allowed method
-in the @ALLOWED_METHODS array in the controller package.
+in the C<< allowed_methods() >> list in the controller package.
 
 =cut
 

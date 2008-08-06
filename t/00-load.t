@@ -18,7 +18,7 @@ BEGIN {
     use_ok("Apache2::Controller::Render::Template");
     use_ok("Apache2::Controller::Session");
     use_ok("Apache2::Controller::Session::Cookie");
-    use_ok("Apache2::Controller::SQL::Connector");
+    use_ok("Apache2::Controller::DBI::Connector");
     use_ok("Apache2::Controller::SQL::MySQL");
     use_ok("Apache2::Controller::Uploads");
     use_ok("Apache2::Controller::X");

@@ -11,8 +11,8 @@ use base qw(
 
 use Log::Log4perl qw(:easy);
 
-our %dispatch_map = (
+sub dispatch_map { {
     default     => 'TestApp::Session::Controller',
-);
+} }
 
 1;

@@ -13,7 +13,7 @@ use Readonly;
 use Apache2::Const -compile => qw(HTTP_OK);
 use Log::Log4perl qw(:easy);
 
-Readonly our @ALLOWED_METHODS => qw( test );
+sub allowed_methods {qw( test )}
 
 sub test {
     my ($self) = @_;

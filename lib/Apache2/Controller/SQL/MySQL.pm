@@ -6,11 +6,11 @@ Apache2::Controller::SQL::MySQL - useful database methods for MySQL
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -46,7 +46,7 @@ Insert data into the database.
  }
 
 Requires $self->pnotes->{dbh} be connected.  
-See L<Apache2::Controller::SQL::Connector>.
+See L<Apache2::Controller::DBI::Connector>.
 
 Hashref argument supports these fields:
 
@@ -117,7 +117,7 @@ sub insert_hash {
 
 =head1 SEE ALSO
 
-L<Apache2::Controller::SQL::Connector>
+L<Apache2::Controller::DBI::Connector>
 
 L<Apache2::Controller>
 

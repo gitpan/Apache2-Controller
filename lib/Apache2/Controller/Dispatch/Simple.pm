@@ -6,11 +6,11 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -26,16 +26,17 @@ our $VERSION = version->new('0.101.111');
      Apache2::Controller::Dispatch::Simple
  );
 
- our %dispatch_map = (
+ # return hash reference from dispatch_map()
+ sub dispatch_map { {            
      foo            => 'MyApp::C::Foo',
      'foo/bar'      => 'MyApp::C::Foo::Bar',
- );
+ } }
 
 =head1 DESCRIPTION
 
 Implements find_controller() for Apache2::Controller::Dispatch with
 a simple URI-to-controller module mapping.  Your URI's are the keys
-of the %dispatch_map hash in your base package, and the values are
+of the C<< dispatch_map() >> hash in your base package, and the values are
 the Apache2::Controller modules to which those URI's should be dispatched.
 
 This dispatches URI's in a case-insensitive fashion.  It searches from

@@ -9,11 +9,10 @@ use base qw(
     Apache2::Controller::Render::Template
 );
 
-use Readonly;
 use Apache2::Const -compile => qw(HTTP_OK);
 use Log::Log4perl qw(:easy);
 
-Readonly our @ALLOWED_METHODS => qw( bar default );
+sub allowed_methods {qw( bar default )}
 
 sub default {
     my ($self) = @_;

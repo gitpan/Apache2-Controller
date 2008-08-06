@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Apache2-Controller
-version:             0.101.111
+version:             0.110.000
 abstract:            framework for Apache2 handler apps
 license:             ~
 author:              
@@ -33,6 +33,7 @@ requires:
     FindBin:                       
     HTML::Entities:                
     HTTP::Status:                  
+    IPC::Open3:                    
     List::MoreUtils:               
     Log::Log4perl:                 
     Readonly:                      

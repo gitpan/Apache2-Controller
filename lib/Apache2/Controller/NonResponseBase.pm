@@ -7,11 +7,11 @@ non-response handlers in Apache2::Controller framework
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -55,6 +55,7 @@ use YAML::Syck;
 
 use Apache2::RequestRec ();
 use Apache2::RequestUtil ();
+use Apache2::Log;
 use Apache2::Const -compile => qw( :common :http :methods );
 
 use Apache2::Controller::X;
@@ -103,16 +104,16 @@ sub handler : method {
 
     if ($status && $status >= Apache2::Const::HTTP_BAD_REQUEST) {
         DEBUG("logging bad request");
-        log_bad_request_reason($r, $X);
-        return Apache2::Const::DONE;  # stop processing further handlers
+        eval { log_bad_request_reason($r, $X); };
+        if (my $X = Exception::Class->caught('Apache2::Controller::X')) {
+            FATAL("Bad error logging bad request! '$X'\n".$X->trace);
+        }
+        elsif ($EVAL_ERROR) {
+            FATAL("Weird error logging bad request! '$EVAL_ERROR'");
+        }
     }
-    elsif ($status && $status == Apache2::Const::REDIRECT) {
-        return Apache2::Const::DONE;
-    }
-    else {
-        DEBUG("returning OK");
-        return Apache2::Const::OK;
-    }
+    DEBUG("returning OK");
+    return Apache2::Const::OK;
 }
 
 =head2 new

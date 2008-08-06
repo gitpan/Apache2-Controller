@@ -10,7 +10,7 @@ use Readonly;
 use Apache2::Const -compile => qw(OK);
 use Log::Log4perl qw(:easy);
 
-Readonly our @ALLOWED_METHODS => qw( default pie );
+sub allowed_methods {qw( default pie )}
 
 sub default {
     my ($self) = @_;

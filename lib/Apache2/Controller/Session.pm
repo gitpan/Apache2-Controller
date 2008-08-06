@@ -6,11 +6,11 @@ Apache2::Controller::Session - Apache2::Controller PerlHeaderParserHandler for A
 
 =head1 VERSION
 
-Version 0.101.111 - BETA TESTING (ALPHA?)
+Version 0.110.000 - BETA TESTING (ALPHA?)
 
 =cut
 
-our $VERSION = version->new('0.101.111');
+our $VERSION = version->new('0.110.000');
 
 =head1 SYNOPSIS
 
@@ -28,12 +28,12 @@ This example assumes use of L<Apache2::Controller::Session::Cookie>.
      # see Apache2::Controller::Dispatch for dispatch subclass info
      PerlInitHandler         MyApp::Dispatch
 
-     # see Apache2::Controller::SQL::Connector for database directives
+     # see Apache2::Controller::DBI::Connector for database directives
 
-     A2CSessionCookieOptions name  myapp_sessid
-     A2CSessionClass         Apache::Session::MySQL
+     A2C_Session_Cookie_Opts name  myapp_sessid
+     A2C_Session_Class         Apache::Session::MySQL
 
-     PerlHeaderParserHandler  Apache2::Controller::SQL::Connector  MyApp::Session
+     PerlHeaderParserHandler  Apache2::Controller::DBI::Connector  MyApp::Session
  </Location>
 
 In controllers, tied session hash is C<< $r->pnotes->{session} >>.
@@ -66,9 +66,9 @@ or use settings other than these, these are the default:
  <Location /elsewhere>
      PerlHeaderParserHandler MyApp::ApacheSessionFile
 
-     A2CSessionClass    Apache::Session::File
-     A2CSessionOptions  Directory       /tmp/sessions 
-     A2CSessionOptions  LockDirectory   /var/lock/sessions
+     A2C_Session_Class    Apache::Session::File
+     A2C_Session_Opts  Directory       /tmp/sessions 
+     A2C_Session_Opts  LockDirectory   /var/lock/sessions
  </Location>
 
 Until directives work and the kludgey PerlSetVar syntax goes away,
@@ -86,7 +86,7 @@ go ahead and init your schema so you can get the database
 handle directly and pass that to your session class.
 
 See
-L<Apache2::Controller::SQL::Connector|Apache2::Controller::SQL::Connector>
+L<Apache2::Controller::DBI::Connector|Apache2::Controller::DBI::Connector>
 for directives to set database connection in pnotes->{dbh}.
 
 Here's a code example for Location /somewhere above:
@@ -248,7 +248,7 @@ sub process {
     DEBUG("processing session: ".($session_id ? $session_id : '[new session]'));
 
     my $directives = $self->get_directives();
-    my $class = $directives->{A2CSessionClass} || 'Apache::Session::File';
+    my $class = $directives->{A2C_Session_Class} || 'Apache::Session::File';
     DEBUG("using session class $class");
 
     do { 
@@ -332,7 +332,7 @@ sub process {
 
 =head2 get_options
 
-If you do not configure C<<A2CSessionOptions>> or override the subroutine,
+If you do not configure C<<A2C_Session_Opts>> or override the subroutine,
 the default C<get_options> method assumes default Apache2::Session::File.
 
 Default settings try to create C<</tmp/A2C/$hostname/sess>>
@@ -349,7 +349,7 @@ my %created_temp_dirs;
 sub get_options {
     my ($self) = @_;
 
-    my $opts = $self->get_directive('A2CSessionOptions');
+    my $opts = $self->get_directive('A2C_Session_Opts');
     
     if (!$opts) {
         my $hostname = $self->{r}->hostname();
@@ -380,9 +380,9 @@ Apache2 configuration directives.  L<Apache2::Controller::Directives>
 
 =over 4
 
-=item A2CSessionClass
+=item A2C_Session_Class
 
-=item A2CSessionOptions
+=item A2C_Session_Opts
 
 =back
 
