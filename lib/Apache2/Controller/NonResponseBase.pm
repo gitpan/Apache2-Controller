@@ -7,11 +7,12 @@ non-response handlers in Apache2::Controller framework
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -78,22 +79,15 @@ sub handler : method {
 
     eval { 
         $handler = $class->new($r);
-        $handler->process(); 
+        $status = $handler->process(); 
     };
     if ($X = Exception::Class->caught('Apache2::Controller::X')) {
-        if ($X->isa('Apache2::Controller::X::Redirect')) {
-            $status = Apache2::Const::REDIRECT;
-            $r->err_headers_out->add(Location => "$X");
-            DEBUG("redirecting to $X");
-        }
-        else {
-            $status = $X->status || Apache2::Const::SERVER_ERROR;
-            DEBUG("Caught an Apache2::Controller::X: $status");
-            DEBUG(ref($X).": $X\n".($X->dump ? Dump($X->dump) : '').$X->trace());
-        }
+        $status = $X->status || Apache2::Const::SERVER_ERROR;
+        WARN("Caught an Apache2::Controller::X: $status");
+        WARN(ref($X).": $X\n".($X->dump ? Dump($X->dump) : '').$X->trace());
     }
     elsif ($X = $EVAL_ERROR) {
-        DEBUG("Caught an unknown error: $X");
+        WARN("Caught an unknown error: $X");
         $status = Apache2::Const::SERVER_ERROR;
     }
 
@@ -112,8 +106,9 @@ sub handler : method {
             FATAL("Weird error logging bad request! '$EVAL_ERROR'");
         }
     }
-    DEBUG("returning OK");
-    return Apache2::Const::OK;
+    $status = Apache2::Const::OK if !defined $status;
+    DEBUG("returning '$status'");
+    return $status;
 }
 
 =head2 new
@@ -156,8 +151,12 @@ sub new {
 
 =head1 SEE ALSO
 
-L<Apache2::Controller::Dispatch>,
+L<Apache2::Controller::NonResponseRequest>
+
+L<Apache2::Controller::Dispatch>
+
 L<Apache2::Controller::Session>
+
 L<Apache2::Controller>
 
 =head1 AUTHOR

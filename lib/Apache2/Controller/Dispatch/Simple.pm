@@ -6,11 +6,12 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -76,10 +77,10 @@ sub _get_class_info {
     else {
         # search dispatch uri keys from longest to shortest
         my @uris = keys %{$dispatch_map};
-        Apache2::Controller::X->throw(
-            "Upper case characters not allowed in $class dispatch_map "
+
+        a2cx "Upper case characters not allowed in $class dispatch_map "
             ."when using ".__PACKAGE__." to dispatch URIs."
-        ) if grep m/ \p{IsUpper} /mxs, @uris;
+            if grep m/ \p{IsUpper} /mxs, @uris;
 
         $uri_length_map = $uri_lengths{$class} = { };
         $uri_length_map->{$_} = length $_ for @uris;
@@ -159,9 +160,8 @@ sub find_controller {
             }
 
             $controller = $dispatch_map->{$search_uri} 
-                || Apache2::Controller::X->throw(
-                    "No controller assigned in $class dispatch map for $search_uri."
-                );
+                || a2cx
+                  "No controller assigned in $class dispatch map for $search_uri.";
             
             # extract the method and the rest of the path args from the uri
             if ($next_char) {
@@ -196,9 +196,10 @@ sub find_controller {
 
     if (!$controller) {
         DEBUG("No controller found.  Using default module from dispatch map.");
-        $controller = $dispatch_map->{default} || Apache2::Controller::X->throw(
-            "No 'default' controller assigned in $class dispatch map."
-        );
+
+        $controller = $dispatch_map->{default} 
+            || a2cx "No 'default' controller assigned in $class dispatch map.";
+
         my $first_arg;
         ($first_arg, @path_args) = split '/', $uri;
         if (controller_allows_method($controller => $first_arg)) {
@@ -210,7 +211,7 @@ sub find_controller {
         }
     }
 
-    Apache2::Controller::X->throw("No controller module found.") if !$controller;
+    a2cx "No controller module found." if !$controller;
 
     $method       ||= 'default';
     $relative_uri ||= '';

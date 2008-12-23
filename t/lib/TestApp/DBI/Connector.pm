@@ -7,6 +7,9 @@ use English '-no_match_vars';
 use File::Spec;
 use DBI;
 
+use Log::Log4perl qw(:easy);
+use YAML::Syck;
+
 use base qw( Apache2::Controller::DBI::Connector );
 
 my $tmp  = File::Spec->tmpdir();
@@ -21,6 +24,7 @@ my @dbi_args = ( "dbi:SQLite:dbname=$sqlfile", '', '', {
 
 sub dbi_connect_args {
     my ($self) = @_;
+    DEBUG "DBI ARGS:\n".Dump(\@dbi_args);
     return @dbi_args;
 }
 

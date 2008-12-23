@@ -9,25 +9,39 @@ helper handler for detecting cancelled connections to the client.
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 DESCRIPTION
 
-You don't need to use this handler.
+You don't need to use this handler, probably.
 
 This is pushed internally by L<Apache2::Controller::Session>
 to detect in the PerlLogHandler phase if the connection has
 been broken to the client before the server closes the connection.
 
+So far it's only useful for the session, and because we now
+use a C<PerlLogHandler> for session saving instead of the
+C<PerlCleanupHandler> in prior versions.  Using a
+C<PerlCleanupHandler> caused 
+problems with synchronicity since the test scripts would
+fire off a new request before Apache was done processing
+the session saving from the prior request... I don't know
+why it did this under prefork with C<Apache::Test>,
+but it did.
+
+So, I'm leaving it separate just in case it is useful for
+something else in the future.
+
 =head1 FUNCTIONS
 
 =head2 handler
 
-Sets C<<$r->notes->{_a2c_connection_aborted}>> with the
+Sets C<<$r->notes->{a2c_connection_aborted}>> with the
 boolean results of C<<$r->connection->aborted()>> and returns.
 
 =cut
@@ -39,9 +53,12 @@ use Apache2::Connection ();
 use Apache2::RequestRec ();
 use Apache2::Const -compile => qw( OK );
 
+use Log::Log4perl qw(:easy);
+
 sub handler {
     my ($r) = @_;
-    $r->notes->{connection_closed} ||= $r->connection->aborted();
+    DEBUG "detecting aborted connection...";
+    $r->notes->{a2c_connection_aborted} ||= $r->connection->aborted();
     return Apache2::Const::OK;
 }
 

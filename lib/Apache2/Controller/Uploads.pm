@@ -6,11 +6,12 @@ Apache2::Controller::Uploads - Upload method extensions.  UNIMPLEMENTED
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 

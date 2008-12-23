@@ -6,11 +6,12 @@ Apache2::Controller::SQL::MySQL - useful database methods for MySQL
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -76,6 +77,7 @@ Array ref of bind values for extra C<?> characters in C<on_dup_sql>.
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
+use Apache2::Controller::X;
 
 sub insert_hash {
     my ($self, $p) = @_;
@@ -104,13 +106,8 @@ sub insert_hash {
         ($id) = $dbh->selectrow_array(q{ SELECT LAST_INSERT_ID() });
     };
     if ($EVAL_ERROR) {
-        Apache2::Controller::X->throw(
-            message => "database error: $EVAL_ERROR",
-            dump => {
-                sql => $sql,
-                bind => \@bind,
-            },
-        );
+        a2cx message => "database error: $EVAL_ERROR",
+            dump => { sql => $sql, bind => \@bind, };
     }
     return $id;
 }

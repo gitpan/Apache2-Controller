@@ -7,11 +7,12 @@ connects L<DBI|DBI> to C<< $r->pnotes->{dbh} >>.
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -28,7 +29,7 @@ our $VERSION = version->new('0.110.000');
      A2C_DBI_Options    RaiseError  1
      A2C_DBI_Options    AutoCommit  0
 
-     # this boolean pushes a PerlCleanupHandler to run rollback if in_txn
+     # this boolean pushes a PerlLogHandler to run rollback if in_txn
      A2C_DBI_Cleanup    1
 
      SetHandler                 modperl
@@ -62,7 +63,6 @@ subroutine, which returns argument list for C<<DBI->connect()>>.
      );
  }
  sub dbi_cleanup { 1 }
- sub dbi_pnotes_name { 'dbh' }
 
  1;
 
@@ -84,12 +84,19 @@ connected only there.
 Otherwise you probably just want to use L<Apache::DBI> and connect
 your database handles on an ad-hoc basis from your controllers.
 
-If directive C<< A2C_DBI_Cleanup >> is set, a C<< PerlCleanupHandler >>
+If directive C<< A2C_DBI_Cleanup >> is set, a C<< PerlLogHandler >>
 gets pushed which will roll back any open transactions.  So if your
 controller does some inserts and then screws up, you don't have to 
 worry about trapping these in eval if you want the DBI errors to
 bubble up.  They will be automatically rolled back since C<< commit() >>
 was never called.
+
+(This used to be a PerlCleanupHandler, but it appears that Apache
+hands this off to a thread even if running under prefork, and
+cleanup doesn't always get processed before the child handles
+the next request.  At least, this is true under L<Apache::Test>.
+Wacky.  So, it's a PerlLogHandler to make sure the commit or
+rollback gets done before the connection dies.)
 
 If you subclass, you can set up multiple dbh handles with different params:
 
@@ -170,28 +177,6 @@ use Apache2::Controller::X;
 #use Apache2::Controller::DBI;
 use DBI;
 
-sub _cleanup_handler {
-    my ($r) = @_;
-    my $dbh = $r->pnotes->{dbh} || return Apache2::Const::OK;
-    if ($dbh->FETCH('BegunWork')) {
-        DEBUG("Cleanup handler: in txn.  Rolling back...");
-        eval { $dbh->rollback() };
-        if ($EVAL_ERROR) {
-            my $error = "cleanup handler cannot roll back: $EVAL_ERROR";
-            ERROR($error);
-            $r->status_line(__PACKAGE__." $error");
-            return Apache2::Const::SERVER_ERROR;
-        }
-        else {
-            DEBUG("Cleanup handler rollback successful.");
-        }
-    }
-    else {
-        DEBUG("Cleanup handler not in txn.");
-    }
-    return Apache2::Const::OK;
-}
-
 =head1 METHODS
 
 =head2 process
@@ -202,7 +187,7 @@ then connects C<< $dbh >> and stashes it in C<< $r->pnotes->{dbh} >>.
 The $dbh has a reference in package space, so controllers using it
 should always call commit or rollback.  It's good practice to use
 C<< eval >> anyway and throw an L<Apache2::Controller::X> or
-your subclass of it,
+your subclass of it (using C<< a2cx() >>,
 so you can see the function path trace in the logs when the error occurs.
 
 The package-space $dbh for the child persists across requests, so
@@ -223,7 +208,7 @@ sub process {
     my @args        = $self->dbi_connect_args;
     my $pnotes_name = $self->dbi_pnotes_name;
 
-    Apache2::Controller::X->throw("Already a dbh in pnotes->{$pnotes_name}")
+    a2cx "Already a dbh in pnotes->{$pnotes_name}"
         if exists $r->pnotes->{$pnotes_name};
 
     my $dbi_subclass = $self->get_directive('A2C_DBI_Class');
@@ -234,11 +219,32 @@ sub process {
     else {
         eval { $r->pnotes->{$pnotes_name} = DBI->connect(@args) };
     }
-    Apache2::Controller::X->throw($EVAL_ERROR) if $EVAL_ERROR;
+    a2cx $EVAL_ERROR if $EVAL_ERROR;
 
     # push the cleanup handler if requested
-    if ($self->dbi_cleanup) {
-        $r->push_handlers(PerlCleanupHandler => \&_cleanup_handler);
+    if (0 && $self->dbi_cleanup) {
+        # using a closure on '$pnotes_name' ... is this kosher?
+        $r->push_handlers(PerlLogHandler => sub {
+            my ($r) = @_;
+            my $dbh = $r->pnotes->{$pnotes_name} || return Apache2::Const::OK;
+            if ($dbh->FETCH('BegunWork')) {
+                DEBUG("Cleanup handler: in txn.  Rolling back...");
+                eval { $dbh->rollback() };
+                if ($EVAL_ERROR) {
+                    my $error = "cleanup handler cannot roll back: $EVAL_ERROR";
+                    ERROR($error);
+                    $r->status_line(__PACKAGE__." $error");
+                    return Apache2::Const::SERVER_ERROR;
+                }
+                else {
+                    DEBUG("Cleanup handler rollback successful.");
+                }
+            }
+            else {
+                DEBUG("Cleanup handler not in txn.");
+            }
+            return Apache2::Const::OK;
+        });
     }
 
     return;
@@ -271,6 +277,9 @@ sub dbi_cleanup { return shift->get_directive('A2C_DBI_Cleanup') }
 =head2 dbi_pnotes_name 
 
 Maybe it would be useful to you to overload this.
+But you'd probably better use the directive 
+L<Apache2::Controller::Directives/A2C_DBI_Pnotes_Name>
+in case other modules (like session) depend on it.
 
 =cut
 

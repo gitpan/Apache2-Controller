@@ -7,11 +7,12 @@ Hash tree dispatch for L<Apache2::Controller::Dispatch>
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -208,10 +209,12 @@ sub find_controller {
     # if still no controller, select the default
     if (!$results{controller}) {
         my $ctrl = $dispatch_map->{default};
-        Apache2::Controller::X->throw("$uri no default controller") if !$ctrl;
-        Apache2::Controller::X->throw(
-            "$uri no references allowed in dispatch_map for default"
-        ) if ref $ctrl;
+
+        a2cx "$uri no default controller" if !$ctrl;
+
+        a2cx "$uri no references allowed in dispatch_map for default"
+            if ref $ctrl;
+
         $results{controller} = $ctrl;
 
         # and find a method.
@@ -227,9 +230,7 @@ sub find_controller {
             @path_args = @path[ 0 .. $#path ] if exists $path[0];
         }
         else {
-            Apache2::Controller::X->throw(
-                "$uri cannot find a working method in $results{controller}"
-            );
+            a2cx "$uri cannot find a working method in $results{controller}";
         }
 
         # relative uri is ''
@@ -242,8 +243,9 @@ sub find_controller {
     })});
 
     # make sure this worked
-    Apache2::Controller::X->throw("did not detect $_")
-        for grep !exists $results{$_}, qw( controller method relative_uri );
+    a2cx "did not detect $_"
+        for grep !exists $results{$_}, 
+        qw( controller method relative_uri );
 
     # save the info in notes
     $r->notes->{$_} = $results{$_} for keys %results;

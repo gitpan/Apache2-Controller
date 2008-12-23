@@ -2,6 +2,7 @@ package Apache2::Controller::Test::Mockr;
 
 use strict;
 use warnings FATAL => 'all';
+use English '-no_match_vars';
 
 use Apache2::Controller::Test::UnitConf;
 

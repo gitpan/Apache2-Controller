@@ -30,7 +30,8 @@ all the Apache::Test stuff.
 =cut
 
 sub diag {
-    do { my $str = $_; $str =~ s{ ^ }{# }mxsg; print "$str\n"; } for @_;
+    my @args = @_;
+    defined && do { s{^}{# }mxsg; print "$_\n" } for @args;
 }
 
 =head2 od

@@ -1,4 +1,14 @@
+
 Revision history for Apache2-Controller
+
+1.000.000   2008-12-20
+            
+            Session now saves only if status < 300, or if 
+            notes->{a2c_session_force_save} is set.
+
+            OpenID!  Rockin.  It doesn't preserve post or get vars
+            yet from the prior request across the openid redirect cycle,
+            but it's good enough to release.  Hurrah!
 
 0.110.000   2008-08-06
 

@@ -6,11 +6,12 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -209,8 +210,7 @@ sub render {
 
     # assimilate output to a scalar 
     my $output;
-    $tt->process($template, $self->{stash}, \$output) 
-        || Apache2::Controller::X->throw($tt->error());
+    $tt->process($template, $self->{stash}, \$output) || a2cx $tt->error();
 
     $self->print($output);
 
@@ -254,8 +254,7 @@ sub render_fast {
 
     my $tt = $self->get_tt_obj();
     # pass Apache2::Request object to print directly.
-    $tt->process($template, $self->{stash}, $self->{r}) 
-        || Apache2::Controller::X->throw($tt->error());
+    $tt->process($template, $self->{stash}, $self->{r}) || a2cx $tt->error();
 
     return;
 }
@@ -324,7 +323,7 @@ sub error {
     $self->{stash}{status} = $status;
 
     my $template_dir = $self->get_directive('A2C_Render_Template_Path')
-        || Apache2::Controller::X->throw('A2C_Render_Template_Path not defined.');
+        || a2cx 'A2C_Render_Template_Path not defined.';
     if (exists $error_templates{$template_dir}{$status_file}) {
 
         my $template = $error_templates{$template_dir}{$status_file};
@@ -336,9 +335,7 @@ sub error {
                 $X->rethrow();
             }
             else {
-                Apache2::Controller::X->throw(
-                    "Cannot process any template for unknown-type error: $X"
-                );
+                a2cx "Cannot process any template for unknown-type error: $X";
             }
         }
 
@@ -368,12 +365,10 @@ sub error {
                 }
                 else {
                     my $dump = { tries => \%try_errors, reftype => ref $X };
-                    Apache2::Controller::X->throw(
-                        message     => "$X",
-                        status => $status,
+                    a2cx message    => "$X",
+                        status      => $status,
                         status_line => $status_line,
-                        'dump'      => $dump,
-                    );
+                        'dump'      => $dump;
                 }
             }
         }
@@ -452,8 +447,7 @@ sub detect_template {
     }
 
     (my $rel_uri = $self->notes->{relative_uri}) =~ s{ \A / }{}mxs;
-    Apache2::Controller::X->throw('notes->{relative_uri} not set')
-        if !defined $rel_uri;
+    a2cx 'notes->{relative_uri} not set' if !defined $rel_uri;
 
     my $file = "$self->{method}.html";
 
@@ -468,8 +462,7 @@ sub detect_template {
         ? File::Spec->catfile( $loc, $rel_uri, $file )
         : File::Spec->catfile( $loc, $file );
 
-    Apache2::Controller::X->throw("bad template path $_")
-        if $template =~ m{ \.\. / }mxs;
+    a2cx "bad template path $_" if $template =~ m{ \.\. / }mxs;
 
     DEBUG("Detected self->{template} to be '$template'");
 
@@ -493,7 +486,7 @@ sub get_tt_obj {
     my ($self) = @_;
 
     my $include_path = $self->get_directive('A2C_Render_Template_Path')
-        || Apache2::Controller::X->throw("A2C_Render_Template_Path not defined");
+        || a2cx "A2C_Render_Template_Path not defined";
 
     my $class = $self->{class};
     $implements_template_opts{$class} = $self->can('template_opts')
@@ -517,8 +510,7 @@ sub get_tt_obj {
     my $tt;
     
     eval { $tt = Template->new(\%opts) || die $Template::ERROR."\n" };
-    Apache2::Controller::X->throw("No TT for $include_path: $EVAL_ERROR") 
-        if $EVAL_ERROR;
+    a2cx "No TT for $include_path: $EVAL_ERROR" if $EVAL_ERROR;
 
     $tts{$opts_key} = $tt;
 

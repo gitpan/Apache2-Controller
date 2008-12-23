@@ -1,27 +1,45 @@
 #!perl 
 
-use Test::More tests => 17;
-use blib;
-
 BEGIN {
-    use_ok("Apache2::Controller");
-    use_ok("Apache2::Controller::Const");
-#   use_ok("Apache2::Controller::Directives");
-    use_ok("Apache2::Controller::Dispatch");
-    use_ok("Apache2::Controller::Dispatch::Simple");
-    use_ok("Apache2::Controller::Dispatch::HashTree");
-    use_ok("Apache2::Controller::Dispatch::RenderTemplate");
-    use_ok("Apache2::Controller::Funk");
-    use_ok("Apache2::Controller::Log::DetectAbortedConnection");
-    use_ok("Apache2::Controller::Methods");
-    use_ok("Apache2::Controller::NonResponseBase");
-    use_ok("Apache2::Controller::Render::Template");
-    use_ok("Apache2::Controller::Session");
-    use_ok("Apache2::Controller::Session::Cookie");
-    use_ok("Apache2::Controller::DBI::Connector");
-    use_ok("Apache2::Controller::SQL::MySQL");
-    use_ok("Apache2::Controller::Uploads");
-    use_ok("Apache2::Controller::X");
+
+    use strict;
+    use warnings FATAL => 'all';
+    use English '-no_match_vars';
+
+    my %untestable = map {($_ => 1)} qw(
+        Apache2::Controller::Directives
+        Apache2::Controller::Test::Funk
+    );
+
+    use Test::More;
+    use blib;
+    my $test_libdir = File::Spec->catfile($FindBin::Bin, 'lib');
+    eval "use lib '$test_libdir'";
+    die $EVAL_ERROR if $EVAL_ERROR;
+    use FindBin;
+    use File::Find;
+    use File::Spec;
+    use YAML::Syck;
+
+    my $a2c_libdir  = File::Spec->catfile($FindBin::Bin, '..', 'blib', 'lib');
+    my @libs;
+    my $wanted = sub {
+        my $libsubpath = $File::Find::name;
+        return if -d $libsubpath;
+        $libsubpath =~ s{ \.pm \z }{}mxs;
+        return if $libsubpath =~ m{ \. \w+ \z  }mxs; # oops, .swp and .exists
+        $libsubpath =~ s{ \A .*? (Apache2/.*) \z }{$1}mxs;
+        $libsubpath =~ s{ \A .*? (TestApp/.*) \z }{$1}mxs;
+        (my $lib = $libsubpath) =~ s{ / }{::}mxsg;
+        push @libs, $lib;
+    };
+    find($wanted, $a2c_libdir, $test_libdir);
+
+    my @testable_libs = grep !exists $untestable{$_}, @libs;
+
+    plan tests => scalar @testable_libs;
+
+    use_ok($_) for @testable_libs;
 }
 
 diag('');

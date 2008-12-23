@@ -1,4 +1,6 @@
 package Apache2::Controller::X;
+use warnings FATAL => 'all';
+use strict;
 
 =head1 NAME
 
@@ -6,20 +8,22 @@ Apache2::Controller::X - Exception::Class hierarchy for Apache2::Controller
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
  package MyApp::C::Foo;
- use base qw( Apache2::Controller ); 
+ use base qw( Apache2::Controller MyApp::Blabber ); 
  use Apache2::Controller::X;
  # ...
- sub page_controller_method {
-    Apache2::Controller::X::Redirect->throw('http://foo.bar');
+ sub some_page_controller_method {
+    my ($self, @path_args) = @_;
+    $self->print( $self->blabber() || a2cx "Cannot blabber: $OS_ERROR" );
  }
 
  # or subclass and extend the errors...
@@ -29,10 +33,9 @@ our $VERSION = version->new('0.110.000');
  use Exception::Class (
      'MyApp::X' => { 
          isa => 'Apache2::Controller::X',
+         fields => [qw( message status dump action )],
      },
-     'MyApp::X::Redirect' => { 
-         isa => 'Apache2::Controller::X::Redirect',
-     },
+     alias => 'myx',
  );
 
  package MyApp::C::Bar;
@@ -41,15 +44,17 @@ our $VERSION = version->new('0.110.000');
  use MyApp::X;
  # ...
  sub page_controller_method {
-     MyApp::X->throw(
-          message => q{ You're not supposed to be here. },
+     myx  message => q{ You're not supposed to be here. },
           status => Apache2::Const::FORBIDDEN,
+          action => sub {"not sure how you'd implement this actually"},
           dump => {
             this    => q{structure will get YAML::Syck::Dump'd},
             that    => [qw( to the error log )],
-          },
-     );
+          };
  }
+
+TODO: when $X is intercepted by handler() in each of the controller layers,
+attach it to pnotes.
 
 =head1 DESCRIPTION
 
@@ -64,10 +69,11 @@ All Apache2::Controller::X exceptions implement three fields:
 
 Required.
 The standard L<Exception::Class> message field.  If you call C<throw()>
+or the alias C<a2cx()>
 with only one argument, a string, then this gets set as the message
 field, which is displayed when the object is referred to in string context.
 
- eval { Apache2::Controller::X->throw("booyeah") };
+ eval { a2cx "booyeah" };
  if (my $X = Exception::Class->caught('Apache2::Controller::X')) {
      warn "my exception 'message' was '$X'\n";
      warn $X->trace;
@@ -78,21 +84,17 @@ field, which is displayed when the object is referred to in string context.
 This can be set to an L<Apache2::Const/:http> constant, which
 will then be set as the status for the request.
 
- Apache2::Controller::X->throw(
-     message => "oh no!",
-     status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR,
- );
+ a2cx message => "oh no!",
+      status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR;
 
 =head2 status_line
 
 Combined with status, when intercepted by L<Apache2::Controller/handler>
 this sets a custom message with L<Apache2::RequestRec/status_line>.
 
- Apache2::Controller::X->throw(
-     message => "Warp injection coil failure in unit 3-A-73",
+ a2cx message => "Warp injection coil failure in unit 3-A-73",
      status => Apache2::Const::HTTP_INTERNAL_SERVER_ERROR,
-     status_line => "Turbulence ahead. Please buckle your safety belts.",
- );
+     status_line => "Turbulence ahead. Please buckle your safety belts.";
 
 This differentiation can be used to display technical information
 in the log while giving a nice message to the user.
@@ -112,42 +114,39 @@ through L<YAML::Syck> Dump() when printing to the error log.
 
 The basic exception object that implements the three basic fields.
 
-=head2 Apache2::Controller::X::Redirect
-
-If thrown back to the handler, the message will be used as
-a url to redirect the browser.
-
- Apache2::Controller::X::Redirect->throw('http://foo.bar');
-
-This works by setting $r->location(), not through an internal redirect.
-If you want to do an internal redirect, just do it with 
-$self->internal_redirect() inherited from Apache2::SubRequest.
+After abandoning redirects, I have no use for any subclasses.
+Should not re-invent the wheel, after all.  Just set the
+outgoing location header and return REDIRECT from a controller
+if you want to do that.  Or other actions should be done.
 
 =cut
 
-use warnings FATAL => 'all';
-use strict;
+use base qw( Exporter );
+our @EXPORT = qw( a2cx );
 
 use Exception::Class (
-    'Apache2::Controller::X'           => { 
+    'Apache2::Controller::X' => { 
+        alias   => 'a2cx',
         fields  => [qw( message dump status status_line )],
     },
-    'Apache2::Controller::X::Redirect' => { 
-        isa => 'Apache2::Controller::X',
-    },
-);
+);  # whoopdeedoo
 
 =head1 METHODS
 
 =head2 Fields
 
 This is the Fields() method provided by L<Exception::Class>.
+For some reason the pod test wants this method enumerated.
 
 =head1 SEE ALSO
 
 L<Exception::Class>
 
 L<Apache2::Controller>
+
+L<Apache2::Controller::NonResponseBase>
+
+L<Apache2::Controller::NonResponseRequest>
 
 =head1 AUTHOR
 

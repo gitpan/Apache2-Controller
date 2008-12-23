@@ -6,11 +6,12 @@ Apache2::Controller::Const - constants for Apache2::Controller
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -35,15 +36,21 @@ use base 'Exporter';
 our @EXPORT_OK = qw(
     @RANDCHARS
     $NOT_GOOD_CHARS
+    $DEFAULT_CONSUMER_SECRET
 );
 
 =head2 @RANDCHARS
 
-An array of the alphabet from which to pick random characters.
+An array of the alphabet plus ascii symbols
+from which to pick random characters.
 
 =cut
 
-Readonly our @RANDCHARS => 'A'..'Z', 'a'..'z', 0..9;
+Readonly::Array our @RANDCHARS => ( 
+    'A'..'Z', 'a'..'z', 0..9, '#', '(', ')', ',',
+    qw( ! @ $ % ^ & * - _ = + [ ] { } ; : ' " \ | < . > / ? ~ ` )  
+);
+
 
 =head2 $NOT_GOOD_CHARS
 

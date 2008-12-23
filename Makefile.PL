@@ -38,6 +38,7 @@ my @requires = qw(
     Apache::TestRequest
     Apache::TestRunPerl
     Apache::TestUtil
+    DateTime
     Digest::SHA
     English
     Exception::Class
@@ -48,7 +49,9 @@ my @requires = qw(
     HTTP::Status
     IPC::Open3
     List::MoreUtils
+    LWPx::ParanoidAgent
     Log::Log4perl
+    Math::BigInt::GMP
     Readonly
     Scalar::Util
     Template

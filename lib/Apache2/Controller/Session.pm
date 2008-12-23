@@ -6,11 +6,12 @@ Apache2::Controller::Session - Apache2::Controller PerlHeaderParserHandler for A
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -110,8 +111,7 @@ Here's a code example for Location /somewhere above:
              'myuser', 'mypassword'
          );
      };
-     Apache2::Controller::X->throw("cannot connect to DB: $EVAL_ERROR")
-         if $EVAL_ERROR;
+     a2cx "cannot connect to DB: $EVAL_ERROR" if $EVAL_ERROR;
      
      my $dbh = $self->pnotes->{dbh};    # save handle for later use
                                         # in controllers, etc.
@@ -137,7 +137,7 @@ In your controller module, access the session in C<< $self->pnotes->{session} >>
      my $session = $self->pnotes->{session};
      $session->{foo} = 'bar';
 
-     # session will be saved by a PerlCleanupHandler
+     # session will be saved by a PerlLogHandler
      # that was automatically pushed by Apache2::Controller::Session
 
      # and in my example
@@ -154,11 +154,11 @@ is fine, as long as you do not dereference it, or as long
 as you save your changes back to C<< $r->pnotes->{session} >>.
 
 No changes are auto-committed.  The one in pnotes is
-copied back into the tied session hash in a C<PerlCleanupHandler>,
-after the server finishes output and closes
+copied back into the tied session hash in a C<PerlLogHandler>,
+after the server finishes output but I<before> it closes
 the connection to the client.  If the connection is detected
 to be aborted in the C<PerlLogHandler> phase, changes are NOT 
-saved into the session object in the C<PerlCleanupHandler> phase.
+saved into the session object.
 
 If you implemented C<get_options()> as per above and decided
 to save your $dbh for later use in your controllers, feel free
@@ -166,14 +166,52 @@ to start transactions and use them normally.  Just make sure you
 use L<perlfunc/eval> correctly and roll back or commit your
 transactions. 
 
-If you decide to push a C<PerlCleanupHandler> to roll back
-transactions for broken connections or something, be aware
-that this handler pushes a cleanup handler closure that
+If you decide to push a C<PerlLogHandler> or C<PerlCleanupHandler>
+to roll back transactions for broken connections or something, be aware
+that this handler pushes a log handler closure that
 saves the copy in pnotes back into the tied hash.
 So, depending on what order you want, whether you want
 to save the session before or after your database cleanup handler,
-you may have to re-order the C<PerlCleanupHandler> stack with
+you may have to re-order the C<PerlLogHandler> stack with
 L<Apache2::RequestUtil/get_handlers> and C<set_handlers()>.
+(Would that work?  I don't know. YMMV.)
+
+=head1 TO SAVE OR NOT TO SAVE
+
+A C<PerlLogHandler> subroutine is 'unshifted' to the request stack
+which decides whether to save changes to the session.  By default,
+it saves changes only if A) the connection is not aborted,
+and B) your controller set HTTP status < 300,
+i.e. it returned C<OK> (0), one of the C<HTTP_CONTINUE> family (100+)
+or one of the C<HTTP_OK> family (200+).  
+
+So for an C<HTTP_SERVER_ERROR>, or throwing an exception, redirecting,
+forbidding access, etc (>= 300), it normally would not save changes.
+If your L<Apache2::Controller> controller module returns one of these 
+non-OK statuses, but you want to force the saving of the session contents, 
+set C<< $self->notes->{a2c_session_force_save} = 1 >> before
+your response phase controller returns a status to L<Apache2::Controller>.
+
+If the connection is aborted mid-way (i.e. the pipe was broken
+due to a network failure or the user clicked 'stop'
+in the browser), then the session will not be saved,
+whether you set the force save flag or not.
+(If this is not useful and correct behavior contact me and I
+will add another switch, but it seems right to me.)
+
+It actually re-orders the C<PerlLogHandler> stack so that
+its handlers run first, before the handler pushed by 
+L<Apache2::Controller::DBI::Connector> commits the database
+transaction, for example.
+
+This used to push a C<PerlCleanupHandler> to save the session,
+which made sense at the time, but the OpenID auth tests revealed
+that the Cleanup handler is apparently assigned a thread to
+process it independently, even under prefork with C<Apache::Test>.
+So, the test script was firing off a new request 
+before the old request Cleanup handler ran to save the session,
+which resulted in sporadic and inconsistent failures... 
+yeah, THOSE kind, you know the type, the most maddening ones.
 
 =head1 IMPLEMENTING TRACKER SUBCLASSES
 
@@ -197,11 +235,6 @@ overload C<get_session_id()> and C<set_session_id()>, etc. etc.
 C<<Apache2::Controller::Session>> will throw an error exception if the
 session setup encounters an error.  
 
-If the session should not be saved in the event your 
-L<Apache2::Controller> controller subroutine traps an C<<$EVAL_ERROR>>,
-then your controller should set boolean flag 
-C<<$r->notes->{connection_closed}>>
-
 =head1 METHODS
 
 =cut
@@ -220,14 +253,14 @@ use Log::Log4perl qw(:easy);
 use File::Spec;
 
 use Apache2::Module;
-use Apache2::Const -compile => qw( OK OR_ALL TAKE1 ITERATE2 );
+use Apache2::Const -compile => qw( OK HTTP_MULTIPLE_CHOICES );
 use Apache2::RequestUtil ();
 use Apache2::Controller::X;
 
 =head2 process
 
 The C<process()> method
-attaches or creates a session, and pushes a PerlCleanupHandler
+attaches or creates a session, and pushes a PerlLogHandler
 closure to save the session after the end of the request.
 
 It sets the session id cookie
@@ -245,38 +278,43 @@ sub process {
     my $r = $self->{r};
 
     my $session_id = $self->get_session_id();
-    DEBUG("processing session: ".($session_id ? $session_id : '[new session]'));
+    DEBUG "processing session: ".($session_id ? $session_id : '[new session]');
 
     my $directives = $self->get_directives();
     my $class = $directives->{A2C_Session_Class} || 'Apache::Session::File';
-    DEBUG("using session class $class");
+    DEBUG "using session class $class";
 
     do { 
         eval "use $class;"; 
-        Apache2::Controller::X->throw($EVAL_ERROR) if $EVAL_ERROR;
+        a2cx $EVAL_ERROR if $EVAL_ERROR;
         $used{$class}++;
     } if !exists $used{$class};
 
     my $options = $self->get_options(); 
-    DEBUG(sub{"Creating session with options:\n".Dump($options)});
+    DEBUG sub{"Creating session with options:\n".Dump($options)};
 
     my %tied_session = ();
     my $tieobj = undef;
     eval { 
         tie %tied_session, $class, $session_id, $options;
-        DEBUG('Finished tie.');
+        DEBUG 'Finished tie.';
         $tieobj = tied(%tied_session);
-        DEBUG(sub{'Session is '.($tieobj ? 'tied' : 'not tied')});
+        DEBUG sub {
+            'Session is '.($tieobj ? 'tied' : 'not tied').", contents:"
+            .Dump(\%tied_session);
+        };
     };
-    Apache2::Controller::X->throw($EVAL_ERROR)      if $EVAL_ERROR;
-    Apache2::Controller::X->throw("no session_id")  if !$tied_session{_session_id};
-    Apache2::Controller::X->throw("no tied obj")    if !defined $tieobj;
-    Apache2::Controller::X->throw("session_id mismatch") 
+    a2cx $EVAL_ERROR     if $EVAL_ERROR;
+    a2cx "no session_id" if !$tied_session{_session_id};
+    a2cx "no tied obj"   if !defined $tieobj;
+    a2cx "session_id mismatch" 
         if defined $session_id && $session_id ne $tied_session{_session_id};
 
     # set the session id in the tracker, however that works
     $session_id ||= $tied_session{_session_id};
-    DEBUG(sub {"session_id is ".(defined $session_id ? "'$session_id'" : '[undef]') });
+    DEBUG sub {
+        "session_id is ".(defined $session_id ? "'$session_id'" : '[undef]') 
+    };
 
     $self->set_session_id($session_id);
 
@@ -284,49 +322,75 @@ sub process {
     $r->pnotes->{session} = \%session_copy;
     $r->pnotes->{_tied_session} = \%tied_session;
 
-    DEBUG("ref of real tied_session is '".\%tied_session."'");
+    DEBUG "ref of real tied_session is '".\%tied_session."'";
 
-    # push state detection handler to last phase that connection is open,
-    # since the connection gets closed before PerlCleanupHandler
-    my $helperdetect 
-        = 'Apache2::Controller::Log::DetectAbortedConnection';
-    DEBUG("Pushing $helperdetect");
-    $r->push_handlers(PerlLogHandler => $helperdetect);
+    # set state detection handler as the first handler in
+    # the last phase that connection is open
+    my $helperdetect = 'Apache2::Controller::Log::DetectAbortedConnection';
+    my @log_handlers = ($helperdetect);
 
-    # push the cleanup handler to save the session:
-    DEBUG("Pushing PerlCleanupHandler to save session");
-    $r->push_handlers(PerlCleanupHandler => sub {
+    # push the handler to save the session:
+    push @log_handlers, sub {
         my ($r) = @_;
-        DEBUG("A2C session cleanup: start handler sub");
+        DEBUG "A2C session cleanup: start handler sub";
 
         # just return if connection was detected as aborted in Log phase
         # while the connection was still open
-        return Apache2::Const::OK if $r->notes->{connection_closed};
+        if ($r->notes->{a2c_connection_aborted}) {
+            DEBUG "Connection aborted.  NOT saving session.";
+            return Apache2::Const::OK;
+        }
 
-        DEBUG("connection not aborted, saving session...");
+        # don't save if the status code >= 300 and they have not
+        # set the special force-save flag.
+        my $http_status = $r->status;
+        if ($http_status >= Apache2::Const::HTTP_MULTIPLE_CHOICES) {
+            if ($r->notes->{a2c_session_force_save}) {
+                DEBUG "status $http_status, but a2c_session_force_save is set."
+            }
+            else {
+                DEBUG "status $http_status, not saving session.";
+                return Apache2::Const::OK;
+            }
+        }
+
+        DEBUG "connection not aborted, saving session...";
 
         # connection finished successfully thru whole cycle, so save session
         my $tied_session = $r->pnotes->{_tied_session};
-        Apache2::Controller::X->throw('no tied session in pnotes') 
-            if !defined $tied_session;
-        DEBUG("ref of pnotes tied_session is '$tied_session'.");
+        a2cx 'no tied session in pnotes when saving' if !defined $tied_session;
+        a2cx 'pnotes->{_tied_session} is not actually tied when saving'
+            if !tied %{$tied_session};
+        DEBUG "ref of pnotes tied_session is '$tied_session'.";
 
         my $session_copy = $r->pnotes->{session};
-        Apache2::Controller::X->throw('no pnotes->{session}')
-            if !defined $session_copy;
+        a2cx 'no pnotes->{session}' if !defined $session_copy;
 
-        DEBUG(sub{"putting copy data back into tied session:\n".Dump($session_copy)});
+        DEBUG sub{
+            "putting copy data back into tied session:\n".Dump($session_copy)
+        };
         %{$tied_session} = %{$session_copy}; 
 
-        DEBUG(sub {
+        DEBUG sub {
             my %debug_sess = %{$tied_session};
             "real session is now:\n".Dump(\%debug_sess);
-        });
+        };
 
+        DEBUG "untying session to save it";
+        untie %{$tied_session};
+        undef $tied_session;
+
+        DEBUG "Done saving session in PerlLogHandler";
         return Apache2::Const::OK;
-    });
+    };
 
-    DEBUG("returning OK");
+    # we reset the whole PerlLogHandler stack to make sure session
+    # gets saved before the database commit happens... lame!
+    push @log_handlers, @{ $r->get_handlers('PerlLogHandler') || [] };
+    DEBUG sub {"reordering the PerlLogHandler stack:\n".Dump(\@log_handlers)};
+    $r->set_handlers(PerlLogHandler => \@log_handlers);
+
+    DEBUG "returning OK";
     return Apache2::Const::OK;
 }
 
@@ -359,7 +423,7 @@ sub get_options {
         my $lock = File::Spec->catfile($dir, 'lock');
 
         if (!exists $created_temp_dirs{$hostname}) {
-            do { mkdir || Apache2::Controller::X->throw("Create $_: $OS_ERROR") }
+            do { mkdir || a2cx "Cannot create $_: $OS_ERROR" }
                 for grep !-d, $dir, $sess, $lock;
             $created_temp_dirs{$hostname} = 1;
         }
@@ -370,7 +434,7 @@ sub get_options {
         };
     }
 
-    DEBUG("returning session opts:\n".Dump($opts));
+    DEBUG "returning session opts:\n".Dump($opts);
     return $opts;
 }
 

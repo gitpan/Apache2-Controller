@@ -11,8 +11,8 @@ sub get_options {
     my ($self) = @_;
     my $tmp = File::Spec->tmpdir();
     return {
-        Directory       => "$tmp/A2Ctest/sess",
-        Directory       => "$tmp/A2Ctest/lock",
+        Directory       => File::Spec->catfile($tmp, 'A2Ctest', 'sess'),
+        LockDirectory   => File::Spec->catfile($tmp, 'A2Ctest', 'lock'),
     };
 }
 

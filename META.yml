@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Apache2-Controller
-version:             0.110.000
+version:             1.000.000
 abstract:            framework for Apache2 handler apps
 license:             ~
 author:              
@@ -25,6 +25,7 @@ requires:
     Apache::TestRequest:           
     Apache::TestRunPerl:           
     Apache::TestUtil:              
+    DateTime:                      
     Digest::SHA:                   
     English:                       
     Exception::Class:              
@@ -36,6 +37,8 @@ requires:
     IPC::Open3:                    
     List::MoreUtils:               
     Log::Log4perl:                 
+    LWPx::ParanoidAgent:           
+    Math::BigInt::GMP:             
     Readonly:                      
     Scalar::Util:                  
     Template:                      

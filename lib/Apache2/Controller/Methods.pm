@@ -6,11 +6,12 @@ Apache2::Controller::Methods - methods shared by Apache2::Controller modules
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -75,30 +76,8 @@ sub get_directives {
         $r->server(),
         $r->per_dir_config(),
     );
-    DEBUG(sub{
-        my @directive_keys = keys %{$directives};
-        "Apache2::Controller::Directives: (@directive_keys)\n"
-        .Dump({ map {($_ => $directives->{$_})} @directive_keys });
-    });
 
-    # i think i should ditch PerlSetVar altogether when directives work,
-    # it is too slow to ask for everytime right?  hrmmm.
-
-    my $dir_config = $r->dir_config();
-    my @all_setvars = keys %{$dir_config};
-    DEBUG(sub {
-        "PerlSetVars (@all_setvars):\n"
-        .Dump({ map {($_ => $dir_config->{$_})} @all_setvars })
-    });
-    my @setvar_names = grep !exists $directives->{$_}, @all_setvars;
-    PERLSETVAR:
-    for my $perlsetvar (@setvar_names) {
-        my @values = $dir_config->get($perlsetvar);
-        DEBUG(sub { "$perlsetvar: ".join(', ', map "'$_'", @values) });
-        ($directives->{$perlsetvar}) = @values > 1 ? \@values : @values;
-    }
-
-    DEBUG(sub{"directives found:\n".Dump($directives)});
+    DEBUG sub{"directives found:\n".Dump($directives)};
 
     $r->pnotes->{directives} = $directives;
     return $directives;
@@ -119,11 +98,14 @@ For now use C<PerlSetVar>.
 sub get_directive {
     my ($self, $directive) = @_;
 
-    Apache2::Controller::X->throw('usage: $self->get_directive($directive)') 
-        if !$directive;
+    a2cx 'usage: $self->get_directive($directive)' if !$directive;
     my $directives = $self->get_directives();
-    DEBUG(sub {"directives:\n".Dump($directives)});
-    return $directives->{$directive};
+    my $directive_value = $directives->{$directive};
+    DEBUG sub { 
+        "directive $directive = "
+        .(defined $directive_value ? "'$directive_value'" : '[undef]')
+    };
+    return $directive_value;
 }
 
 =head2 get_apache2_request_opts
@@ -141,9 +123,8 @@ my %apache2_request_opts = ( );
 
 sub get_apache2_request_opts {
     my ($self, $controller) = @_;
-    Apache2::Controller::X->throw(
-        'usage: $self->get_apache2_request_opts($controller_class)'
-    ) if !$controller || ref $controller;
+    a2cx 'usage: $self->get_apache2_request_opts($controller_class)'
+        if !$controller || ref $controller;
 
     if (!exists $apache2_request_opts{$controller}) {
         my $directives = $self->get_directives();

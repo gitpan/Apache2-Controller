@@ -6,11 +6,12 @@ Apache2::Controller::Dispatch - dispatch base class for Apache::Controller
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -141,8 +142,13 @@ Any implementation of find_controller() should throw an
 L<Apache2::Controller::X> with status C<< Apache2::Const::NOT_FOUND >>
 in the
 event that the detected method selected does not appear in the list of
-C<< allowed_methods() >> in the controller module.  
-See L<Apache2::Controller::Funk/check_allowed_method>
+C<< allowed_methods() >> in the controller module.  ex:
+
+ a2cx status => Apache2::Const::NOT_FOUND;
+
+See L<Apache2::Controller::Funk/check_allowed_method>.  This is 
+internal stuff mostly, you don't have to implement your own 
+type of dispatch mechanism unless you are a nut like me.
 
 Successful run of find_controller() should result in four items of
 data being set in request->notes and request->pnotes:
@@ -228,15 +234,22 @@ sub process {
     # find the controller module and method to dispatch the URI
     $self->find_controller();
     my $controller = $self->{controller} = $r->notes->{controller};
-    DEBUG("found controller '$controller'");
+    DEBUG "found controller '$controller'";
 
-    # push the handler for that class 
+    # save the dispatch class name in notes in case we have to
+    # re-dispatch somewhere along the line if the uri changes
+    # (this is done by Apache2::Controller::Auth::OpenID, for instance)
+    $r->notes->{a2c_dispatch_class} = $class;
+
+    # set the handler for that class 
     # - this has to be the last thing it does in case an exception is thrown
 
-    DEBUG("pushing PerlResponseHandler '$controller'");
-    $r->push_handlers(PerlResponseHandler => "$controller"); # "" == lame but true
+    DEBUG "setting PerlResponseHandler '$controller'";
+    $r->set_handlers(PerlResponseHandler => [ "$controller" ]); 
+    # "" == lame but true, must stringify lib name because
+    # the value is some kind of blessed scalar reference or something
 
-    DEBUG("Done with process()");
+    DEBUG sub { "Done with process() for uri ".$r->uri };
     
     return Apache2::Const::OK;
 }
@@ -257,7 +270,7 @@ dispatch subclass.
 sub dispatch_map {
     my ($self) = @_;
     return $self->get_directive('A2C_Dispatch_Map')
-        || Apache2::Controller::X->throw("No directive A2C_Dispatch_Map");
+        || a2cx "No directive A2C_Dispatch_Map";
 }
 
 =head2 get_dispatch_map
@@ -278,15 +291,14 @@ sub get_dispatch_map {
 
     my $dispatch_map = $self->dispatch_map();
 
-    Apache2::Controller::X->throw("No dispatch_map() in $class") if !$dispatch_map;
+    a2cx "No dispatch_map() in $class" if !$dispatch_map;
 
     my $ref = ref $dispatch_map;
-    Apache2::Controller::X->throw("Bad dispatch_map() in $class") 
-        if !defined $ref || $ref ne 'HASH';
+    a2cx "Bad dispatch_map() in $class" if !defined $ref || $ref ne 'HASH';
 
     $dispatch_maps{$class} = $dispatch_map;
 
-    DEBUG(sub{"dispatch_maps:".Dump(\%dispatch_maps)});
+    DEBUG sub{"dispatch_maps:".Dump(\%dispatch_maps)};
 
     return $dispatch_map;
 }

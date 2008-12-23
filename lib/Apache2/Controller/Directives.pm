@@ -6,11 +6,12 @@ Apache2::Controller::Directives - server config directives for A2C
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -31,9 +32,13 @@ use English '-no_match_vars';
 use Carp qw( croak );
 use Log::Log4perl qw(:easy);
 use YAML::Syck;
+use Readonly;
 
 use Apache2::Module ();
-use Apache2::Const -compile => qw( OR_ALL TAKE1 ITERATE ITERATE2 );
+use Apache2::Const -compile => qw( OR_ALL NO_ARGS TAKE1 ITERATE ITERATE2 RAW_ARGS );
+use Apache2::Controller::X;
+
+use Apache2::Controller::Const qw( @RANDCHARS );
 
 my @directives = (
 
@@ -147,6 +152,93 @@ my @directives = (
         args_how        => Apache2::Const::TAKE1,
         errmsg          => 'example: A2C_DBI_Pnotes_Name reader',
     },
+
+    # A2C:Auth::OpenID
+    {
+        name            => 'A2C_Auth_OpenID_Login',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_Login /myapp/login',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_Logout',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_Logout /myapp/logout',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_Register',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_Register /myapp/register',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_Timeout',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_Timeout +1h',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_Table',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_Table openid',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_User_Field',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_User_Field uname',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_URL_Field',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_URL_Field openid_url',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_DBI_Name',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_DBI_Name dbh',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_Trust_Root',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_Trust_Root http://blah.tld/blah',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_LWP_Class',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::TAKE1,
+        errmsg          => 'example: A2C_Auth_OpenID_LWP_Class LWPx::ParanoidAgent',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_LWP_Opts',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::ITERATE2,
+        errmsg          => q{
+            # specify options to the LWP class.  example:
+            A2C_Auth_OpenID_LWP_Opts timeout           10
+            A2C_Auth_OpenID_LWP_Opts agent             A2C-openid
+            A2C_Auth_OpenID_LWP_Opts whitelisted_hosts 127.0.0.1  foo.bar.tld
+            # (don't whitelist stuff for ParanoidAgent unless you know
+            # what you're doing... we do this for the test suite)
+        },
+    },
+    {
+        name            => 'A2C_Auth_OpenID_Allow_Logins',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::NO_ARGS,
+        errmsg          => 'example: A2C_Auth_OpenID_Allow_Logins',
+    },
+    {
+        name            => 'A2C_Auth_OpenID_Consumer_Secret',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::RAW_ARGS,
+        errmsg          => 'example: A2C_Auth_OpenID_Consumer_Secret foobar',
+    },
 );
 
 Apache2::Module::add(__PACKAGE__, \@directives);
@@ -248,8 +340,8 @@ It should be this way, at any rate!
 =cut
 
 sub A2C_Render_Template_Opts {
-    my ($self, $parms, $key, @vals) = @_;
-    $self->_hash_assign('A2C_Render_Template_Opts', $key, @vals);
+    my ($self, $parms, $key, $val) = @_;
+    $self->hash_assign('A2C_Render_Template_Opts', $key, $val);
     return;
 }
 
@@ -280,8 +372,8 @@ Multiple arguments
 =cut
 
 sub A2C_Session_Opts {
-    my ($self, $parms, $key, @vals) = @_;
-    $self->_hash_assign('A2C_Session_Opts', $key, @vals);
+    my ($self, $parms, $key, $val) = @_;
+    $self->hash_assign('A2C_Session_Opts', $key, $val);
     return;
 }
 
@@ -297,8 +389,8 @@ L<Apache2::Cookie>
 =cut
 
 sub A2C_Session_Cookie_Opts {
-    my ($self, $parms, $key, @vals) = @_;
-    $self->_hash_assign('A2C_Session_Cookie_Opts', $key, @vals);
+    my ($self, $parms, $key, $val) = @_;
+    $self->hash_assign('A2C_Session_Cookie_Opts', $key, $val);
     return;
 }
 
@@ -355,8 +447,8 @@ Multiple arguments.
 =cut
 
 sub A2C_DBI_Options {
-    my ($self, $parms, $key, @vals) = @_;
-    $self->_hash_assign('A2C_DBI_Options', $key, @vals);
+    my ($self, $parms, $key, $val) = @_;
+    $self->hash_assign('A2C_DBI_Options', $key, $val);
     return;
 }
 
@@ -399,22 +491,357 @@ If you don't use it, it uses a block eval to connect DBI.
 
 =cut
 
-# _hash_assign performs iterate2 options hash assignments in a 
-# consistent way (or so one might hope)
+sub A2C_DBI_Class {
+    my ($self, $parms, $val) = @_;
+    $self->{A2C_DBI_Class} = $val;
+}
 
-sub _hash_assign {
-    my ($self, $directive, $key, @vals) = @_;
+=head1 Apache2::Controller::Auth::OpenID
+
+See L<Apache2::Controller::Auth::OpenID>.
+
+=head2 A2C_Auth_OpenID_Login
+
+ A2C_Auth_OpenID_Login  login
+
+The URI path for your login controller page. 
+
+If you start the value with a '/', it thinks you mean
+an absolute URI.
+
+If you do not start the value with a '/', it thinks you
+mean a uri relative to 
+the location path where the directive was declared.
+
+Examples:
+
+ <Location '/foo/bar'>
+     A2C_Auth_OpenID_Login  /login
+ </Location>
+
+The user would be redirected to absolute uri '/login'.
+
+ <Location '/loungy/vegas/entertainment'>
+     A2C_Auth_OpenID_Login  kenny_loggins
+ </Location>
+
+The user would be redirected to 
+C<< /loungy/vegas/entertainment/kenny_loggins >> 
+if they are not logged in.
+
+These conventions are the same for C<< A2C_Auth_OpenID_Logout >>
+and C<< A2C_Auth_OpenID_Register >>.
+
+Default is the path where the controller is declared, appended with '/login'.
+Access will be allowed.
+
+=cut
+
+sub A2C_Auth_OpenID_Login {
+    my ($self, $parms, $val) = @_;
+    $val = 'login' if !defined $val;
+    $val = $parms->path.'/'.$val if $val !~ m{ \A / }mxs;
+    $self->{A2C_Auth_OpenID_Login} = $val;
+}
+
+=head2 A2C_Auth_OpenID_Logout
+
+ A2C_Auth_OpenID_Logout  logout
+
+The URI path for your logout controller page.
+
+Logout is processed automatically, resetting the flag and
+timestamp in the session hash.  So you just need to present
+a page that says "Good riddance" or something.
+
+Same conventions apply as to C<< A2C_Auth_OpenID_Login >>.
+Default is the path where the controller is declared, appended with '/logout'.
+Access will be allowed.
+
+=cut
+
+sub A2C_Auth_OpenID_Logout {
+    my ($self, $parms, $val) = @_;
+    $val = 'logout' if !defined $val;
+    $val = $parms->path.'/'.$val if $val !~ m{ \A / }mxs;
+    $self->{A2C_Auth_OpenID_Logout} = $val;
+}
+
+=head2 A2C_Auth_OpenID_Register
+
+ A2C_Auth_OpenID_Register  register
+
+The path for your registration page, where you will ask the user
+to sign up and associate a username with the openid url.
+
+Same conventions apply as to C<< A2C_Auth_OpenID_Login >>.
+Default is the path where the controller is declared, appended with '/register'.
+Access will be allowed.
+
+=cut
+
+sub A2C_Auth_OpenID_Register {
+    my ($self, $parms, $val) = @_;
+    $val = 'register' if !defined $val;
+    $val = $parms->path.'/'.$val if $val !~ m{ \A / }mxs;
+    $self->{A2C_Auth_OpenID_Register} = $val;
+}
+
+=head2 A2C_Auth_OpenID_Timeout
+
+ A2C_Auth_OpenID_Timeout  +1h
+
+Idle timeout in seconds, +2m, +3h, +4D, +6M, +7Y, or 'no timeout'.
+Default is 1 hour.  A month is actually 30 days, a year 365.
+
+If you use 'no timeout' then logins will never expire.
+This probably is not a good idea because OpenID url's can
+be revoked, and because the login process can be a transparent
+series of redirects if the user has something like
+Verisign's SeatBelt plugin.
+
+If you're doing some sort of cluster application or load balancing
+and sharing the session between servers, make sure all your servers
+are synchronized with NTP.  
+
+=cut
+
+my %time_multiplier = (
+    s       => 1,
+    m       => 60,
+    h       => 60 * 60,
+    D       => 60 * 60 * 24,
+    M       => 60 * 60 * 24 * 30,
+    Y       => 60 * 60 * 24 * 365,
+);
+
+sub A2C_Auth_OpenID_Timeout {
+    my ($self, $parms, $val) = @_;
+    $val ||= '+1h';
+    if ($val ne 'no timeout') {
+        my ($num, $period) = $val =~ m{ \A \+? (\d+) ([YMDhms]?) \z }mxs;
+        $period ||= 's';
+        croak("A2C_Auth_OpenID_Timeout invalid format") 
+            if !$num || !exists $time_multiplier{$period};
+        $val = $num * $time_multiplier{$period};
+    }
+
+    $self->{A2C_Auth_OpenID_Timeout} = $val;
+}
+
+=head2 A2C_Auth_OpenID_Table
+
+ A2C_Auth_OpenID_Login  openid
+
+Name of the table in your connected database containing the 
+user name and OpenID url fields.  Default == "openid".
+
+=cut
+
+sub A2C_Auth_OpenID_Table {
+    my ($self, $parms, $val) = @_;
+    $self->{A2C_Auth_OpenID_Table} = $val || 'openid';
+}
+
+=head2 A2C_Auth_OpenID_User_Field
+
+ A2C_Auth_OpenID_User_Field  uname
+
+Name of username field in table.  Default == "uname".
+
+=cut
+
+sub A2C_Auth_OpenID_User_Field {
+    my ($self, $parms, $val) = @_;
+    $self->{A2C_Auth_OpenID_User_Field} = $val || 'uname';
+}
+
+=head2 A2C_Auth_OpenID_URL_Field
+
+ A2C_Auth_OpenID_URL_Field  openid_url
+
+Name of OpenID URL field in table.  Default == "openid_url".
+
+=cut
+
+sub A2C_Auth_OpenID_URL_Field {
+    my ($self, $parms, $val) = @_;
+    $self->{A2C_Auth_OpenID_URL_Field} = $val || 'openid_url';
+}
+
+=head2 A2C_Auth_OpenID_DBI_Name
+
+ A2C_Auth_OpenID_DBI_Name  dbh
+
+Name in C<< $r->pnotes >> of the connected L<DBI> handle.
+Default == "dbh".
+
+=cut
+
+sub A2C_Auth_OpenID_DBI_Name {
+    my ($self, $parms, $val) = @_;
+    $self->{A2C_Auth_OpenID_DBI_Name} = $val || 'dbh';
+}
+
+=head2 A2C_Auth_OpenID_Trust_Root
+
+ A2C_Auth_OpenID_Trust_Root  http://blah.tld/blah
+
+The trust_root param to pass to the user's OpenID server.
+See L<Net::OpenID::Consumer>.  Default is the top of 
+the web site with whatever scheme, host and port that
+is currently being requested.
+
+=cut
+
+sub A2C_Auth_OpenID_Trust_Root {
+    my ($self, $parms, $val) = @_;
+    $self->{A2C_Auth_OpenID_Trust_Root} = $val;
+}
+
+=head2 A2C_Auth_OpenID_LWP_Class
+
+ A2C_Auth_OpenID_LWP_Class  LWPx::ParanoidAgent
+
+Name of the L<LWP> class to use.  By default it uses
+L<LWPx::ParanoidAgent> but not L<LWPx::ParanoidAgent::DashT>,
+as that one is not available as a Debian package, I
+was unsuccessful building it with dh-make-perl, and I
+want to be able to distribute to Debian.
+
+=cut
+
+sub A2C_Auth_OpenID_LWP_Class {
+    my ($self, $parms, $val) = @_;
+    $self->{A2C_Auth_OpenID_LWP_Class} = $val || 'LWPx::ParanoidAgent';
+}
+
+=head2 A2C_Auth_OpenID_LWP_Opts
+
+Specify options to the LWP class.
+
+ A2C_Auth_OpenID_LWP_Opts timeout           10
+ A2C_Auth_OpenID_LWP_Opts agent             A2C-openid
+ A2C_Auth_OpenID_LWP_Opts whitelisted_hosts [ 127.0.0.1  foo.bar.com ]
+
+Don't whitelist stuff for ParanoidAgent unless you know
+what you're doing... I was going do this for the test suite to let
+the module call the temporary OpenID server set up on localhost.
+
+But that ends up not working in the test suite because of some other 
+problem trying to connect to a port which I don't know necessarily?
+("Error fetching URL: No sock from bgsend").
+So the test suite just uses plain old LWP::UserAgent.
+
+This uses C<< hash_assign() >> to assign the options.
+
+Use [ ] to force an array ref for a single option that has
+to be an arrayref: 
+
+ A2C_Auth_OpenID_LWP_Opts whitelisted_hosts [ 192.168.34.5 ]
+
+but don't use commas, it's tricky.
+ 
+=cut
+
+sub A2C_Auth_OpenID_LWP_Opts {
+    my ($self, $parms, $key, $val) = @_;
+    $self->hash_assign('A2C_Auth_OpenID_LWP_Opts', $key, $val);
+    return;
+}
+
+=head2 A2C_Auth_OpenID_Allow_Login
+
+ A2C_Auth_OpenID_Allow_Login
+
+Takes no arguments.  If directed, L<Apache2::Controller::Auth::OpenID>
+will allow all login attempts and will not attempt to authenticate 
+with OpenID.  Useful for debugging your application on your laptop
+when you are not connected to the Internet.
+
+=cut
+
+sub A2C_Auth_OpenID_Allow_Login {
+    my ($self, $parms) = @_;
+    $self->{A2C_Auth_OpenID_Allow_Login} = 1;
+}
+
+=head2 A2C_Auth_OpenID_Consumer_Secret
+
+ # generate a random 30-character string:
+ A2C_Auth_OpenID_Consumer_Secret
+
+ # specify your own string:
+ A2C_Auth_OpenID_Consumer_Secret jsd9e9j#*@JMf39kc3
+
+This server-wide constant string will be appended to the value of 
+time() for the sha224_base64 hash provided as the consumer_secret.
+See L<Net::OpenID::Consumer/consumer_secret>.
+
+If you don't specify the value, it will generate a default 30-character
+random string.
+
+=cut
+
+sub A2C_Auth_OpenID_Consumer_Secret {
+    my ($self, $parms, $val) = @_;
+    if (!defined $val || $val =~ m{ \A \s* \z }mxs) {
+        srand;
+        $val = join('', map $RANDCHARS[int(rand(@RANDCHARS))], 1..30);
+    }
+    $self->{A2C_Auth_OpenID_Consumer_Secret} = $val;
+}
+
+=head2 hash_assign 
+
+This is not a configuration option, but an internal routine
+that we use to assign ITERATE2 options in a consistent way,
+or so one might hope.  I'm not sure I fully understand the
+behavior and I haven't written tests for directives.
+
+If a single value is specified, it is assigned as a scalar.
+
+If multiple values are specified (on the same configuration
+directive call or in multiple calls) they are successively 
+
+This is sort of similar the way that C<< $r->param >> will get
+a string or an array ref depending if the var has been named
+more than once.
+
+Use [ ] to force an array ref for a single option that has
+to be an arrayref: 
+
+ A2C_Auth_OpenID_LWP_Opts whitelisted_hosts [ 127.0.0.1 ]
+
+but don't use commas, it's tricky.  The closing ] is actually
+ignored, but you should use it to make it look sensible.
+
+As a result, you can't use '[' or ']' for the values of 
+any of these options... but you "shouldn't need to do that."
+
+See L<Apache2::Const/ITERATE2>.
+
+=cut
+
+sub hash_assign {
+    my ($self, $directive, $key, $val) = @_;
+
+    croak "No value for $directive {$key}." if !$val;
+
+    if ($val eq '[') {
+        $self->{$directive}{$key} = [ ] if !exists $self->{$directive}{$key};
+        return;
+    }
+
+    return if $val eq ']';
+    
     if (exists $self->{$directive}{$key}) {
-        push @{$self->{$directive}{$key}}, @vals;
-    }
-    elsif (@vals == 1) {
-        $self->{$directive}{$key} = $vals[0];
-    }
-    elsif (@vals > 1) {
-        $self->{$directive}{$key} = \@vals;
+        $self->{$directive}{$key} = [ $self->{$directive}{$key} ]
+            if !ref $self->{$directive}{$key};
+        push @{$self->{$directive}{$key}}, $val;
     }
     else {
-        Apache2::Controller::X->throw("No value for $directive {$key}.");
+        $self->{$directive}{$key} = $val;
     }
     return;
 }

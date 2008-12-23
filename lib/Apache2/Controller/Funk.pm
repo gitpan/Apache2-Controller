@@ -6,11 +6,12 @@ Apache2::Controller::Funk
 
 =head1 VERSION
 
-Version 0.110.000 - BETA TESTING (ALPHA?)
+Version 1.000.000 - FIRST RELEASE
 
 =cut
 
-our $VERSION = version->new('0.110.000');
+use version;
+our $VERSION = version->new('1.000.000');
 
 =head1 SYNOPSIS
 
@@ -46,10 +47,10 @@ our @EXPORT_OK = qw(
     controller_allows_method
     check_allowed_method
     log_bad_request_reason
+    default_consumer_secret
 );
 
 Readonly my $ACCESS_LOG_REASON_LENGTH => 60;
-
 
 =head1 IMPORTABLE FUNCTIONS
 
@@ -69,8 +70,8 @@ my %allowed_methods = ( );
 sub controller_allows_method {
     my ($class, $method) = @_;
 
-    Apache2::Controller::X->throw("class undefined")  if !defined $class;
-    Apache2::Controller::X->throw("method undefined") if !defined $method;
+    a2cx "class undefined"  if !defined $class;
+    a2cx "method undefined" if !defined $method;
     DEBUG(sub{
         "checking class '$class', method '$method', allowed is:\n"
         .Dump(\%allowed_methods)
@@ -82,15 +83,13 @@ sub controller_allows_method {
     if (!exists $allowed_methods{$class}) {
 
         eval "require $class;";
-        Apache2::Controller::X->throw("cannot require $class: $EVAL_ERROR")
-            if $EVAL_ERROR;
+        a2cx "cannot require $class: $EVAL_ERROR" if $EVAL_ERROR;
 
         my $isa_a2c; 
         eval "\$isa_a2c = $class->isa('Apache2::Controller');";
-        Apache2::Controller::X->throw("$class is not an Apache2::Controller")
-            unless $isa_a2c;
+        a2cx "$class is not an Apache2::Controller" unless $isa_a2c;
 
-        Apache2::Controller::X->throw("$class knows no allowed_methods()")
+        a2cx "$class knows no allowed_methods()"
             unless $class->can('allowed_methods');
 
         my @allowed_methods = $class->allowed_methods();
@@ -113,16 +112,14 @@ in the C<< allowed_methods() >> list in the controller package.
 
 sub check_allowed_method {
     my ($class, $method) = @_;
-    Apache2::Controller::X->throw("class undefined")  if !defined $class;
-    Apache2::Controller::X->throw("method undefined") if !defined $method;
+    a2cx "class undefined"  if !defined $class;
+    a2cx "method undefined" if !defined $method;
     DEBUG("checking class '$class', method '$method'");
 
     if (!controller_allows_method($class, $method)) {
         DEBUG("Method $method not allowed in $class.");
-        Apache2::Controller::X->throw(
-            message     => "Method $method not allowed from $class.",
-            status => Apache2::Const::NOT_FOUND,
-        );
+        a2cx message    => "Method $method not allowed from $class.",
+            status      => Apache2::Const::NOT_FOUND;
     }
     return;
 }
@@ -138,7 +135,7 @@ version of $X in case $X is too long.
 
 sub log_bad_request_reason {
     my ($r, $X) = @_;
-    Apache2::Controller::X->throw('usage: log_bad_request_reason($r, $X)') 
+    a2cx 'usage: log_bad_request_reason($r, $X)'
         if !$r || !ref($r) || !$r->can('log_reason') || !$X;
     
     my $x_text = "$X";
