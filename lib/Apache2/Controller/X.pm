@@ -8,12 +8,12 @@ Apache2::Controller::X - Exception::Class hierarchy for Apache2::Controller
 
 =head1 VERSION
 
-Version 1.000.000 - FIRST RELEASE
+Version 1.000.001 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.000');
+our $VERSION = version->new('1.000.001');
 
 =head1 SYNOPSIS
 

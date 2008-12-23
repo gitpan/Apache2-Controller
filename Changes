@@ -1,6 +1,10 @@
 
 Revision history for Apache2-Controller
 
+1.000.001   2008-12-20
+
+            Put CPAN upload in the right directory.  Duh.
+
 1.000.000   2008-12-20
             
             Session now saves only if status < 300, or if 
