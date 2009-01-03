@@ -7,12 +7,12 @@ non-response handlers in Apache2::Controller framework
 
 =head1 VERSION
 
-Version 1.000.001 - FIRST RELEASE
+Version 1.000.010 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.001');
+our $VERSION = version->new('1.000.010');
 
 =head1 SYNOPSIS
 
@@ -74,6 +74,8 @@ C<< Apache2::Request >> object to C<< $self->{r} >>.
 sub new {
     my ($class, $r) = @_;
 
+    a2cx "I am pretty sure I won't or shouldn't be using this.";
+
     # note the '::' in call to new, not '->' ... we have to trick the class
     my $self = Apache2::Controller::NonResponseBase::new($class, $r);
 
@@ -81,9 +83,7 @@ sub new {
 
     DEBUG("Created NonResponseBase of class '$class'");
 
-    $self->{r} = Apache2::Request->new(
-        $self->{r}, $self->get_apache2_request_opts($class)
-    );
+    $self->{r} = Apache2::Request->new( $self->{r},);
 
     DEBUG("Replaced self->{r} with Apache2::Request object");
 

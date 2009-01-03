@@ -17,7 +17,7 @@ my $url = "/render";
 
 my $data = GET_BODY $url;
 
-ok t_cmp("Top level handler.\n", $data, "render test: top level handler");
+ok t_cmp($data, "Top level handler.\n", "render test: top level handler");
 
 $data = GET_BODY "$url/foo/bar/biz/baz";
 my $dumpstring = "bar:\n".Dump([qw( biz baz )])."\n";

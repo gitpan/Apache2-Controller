@@ -4,7 +4,7 @@ use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
 
-use base qw( Apache2::Controller );
+use base qw( Apache2::Controller Apache2::Request );
 
 sub allowed_methods {qw( 
     working 

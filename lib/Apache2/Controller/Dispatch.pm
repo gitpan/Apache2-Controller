@@ -6,12 +6,12 @@ Apache2::Controller::Dispatch - dispatch base class for Apache::Controller
 
 =head1 VERSION
 
-Version 1.000.001 - FIRST RELEASE
+Version 1.000.010 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.001');
+our $VERSION = version->new('1.000.010');
 
 =head1 SYNOPSIS
 

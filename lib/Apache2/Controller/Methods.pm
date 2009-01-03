@@ -6,12 +6,12 @@ Apache2::Controller::Methods - methods shared by Apache2::Controller modules
 
 =head1 VERSION
 
-Version 1.000.001 - FIRST RELEASE
+Version 1.000.010 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.001');
+our $VERSION = version->new('1.000.010');
 
 =head1 SYNOPSIS
 
@@ -106,39 +106,6 @@ sub get_directive {
         .(defined $directive_value ? "'$directive_value'" : '[undef]')
     };
     return $directive_value;
-}
-
-=head2 get_apache2_request_opts
-
- my %opts = $self->get_apache2_request_opts( $controller_class_name );
-
-Returns the Apache2::Request options hash (i.e. POST_MAX and TEMP_DIR, etc.) 
-for a given
-Apache2::Controller controller module class name.  Caches this information
-for speedup.
-
-=cut
-
-my %apache2_request_opts = ( );
-
-sub get_apache2_request_opts {
-    my ($self, $controller) = @_;
-    a2cx 'usage: $self->get_apache2_request_opts($controller_class)'
-        if !$controller || ref $controller;
-
-    if (!exists $apache2_request_opts{$controller}) {
-        my $directives = $self->get_directives();
-        my %opts;
-        eval '$opts{TEMP_DIR} = $'.$controller.'::TEMP_DIR;';
-        eval '$opts{POST_MAX} = $'.$controller.'::POST_MAX;';
-
-        do { $opts{$_} ||= $directives->{"A2C_$_"} if $directives->{"A2C_$_"} }
-            for qw( TEMP_DIR POST_MAX );
-        delete $opts{$_} for grep !defined $opts{$_}, keys %opts;
-        $apache2_request_opts{$controller} = \%opts;
-    }
-
-    return %{ $apache2_request_opts{$controller} };
 }
 
 =head2 get_cookie_jar

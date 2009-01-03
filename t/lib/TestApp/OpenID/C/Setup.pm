@@ -6,6 +6,7 @@ use English '-no_match_vars';
 
 use base qw( 
     Apache2::Controller
+    Apache2::Request
 );
 
 use Readonly;

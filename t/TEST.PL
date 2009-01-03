@@ -2,10 +2,13 @@
   
 use strict;
 use warnings FATAL => 'all';
-  
+
+use FindBin;
+
 use blib;
-use lib qw(lib);
+use lib "$FindBin::Bin/lib";
+
+use Apache2::Controller::Test::TestRun ();
   
-use Apache::TestRunPerl ();
-  
-Apache::TestRunPerl->new->run(@ARGV);
+Apache2::Controller::Test::TestRun->new->run(@ARGV);
+

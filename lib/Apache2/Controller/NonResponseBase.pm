@@ -7,12 +7,12 @@ non-response handlers in Apache2::Controller framework
 
 =head1 VERSION
 
-Version 1.000.001 - FIRST RELEASE
+Version 1.000.010 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.001');
+our $VERSION = version->new('1.000.010');
 
 =head1 SYNOPSIS
 
@@ -106,6 +106,9 @@ sub handler : method {
             FATAL("Weird error logging bad request! '$EVAL_ERROR'");
         }
     }
+
+    # Exception objects with non-error status were already WARN'ed.
+    
     $status = Apache2::Const::OK if !defined $status;
     DEBUG("returning '$status'");
     return $status;

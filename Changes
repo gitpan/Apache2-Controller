@@ -1,6 +1,22 @@
 
 Revision history for Apache2-Controller
 
+1.000.010   2008-12-2
+
+            Detaints directive values. 
+
+            Controller doesn't double-check allowed_methods
+            in case your dispatch wants freedom from that.
+
+            Improvements/correction to documentation.
+
+            Session now uses a checkum.  Thanks David Ihern.
+
+            OpenID auth module put on backburner until
+            I rewrite it again, I wanted to get this out
+            the door with functional session checksum and
+            correct documentation.
+
 1.000.001   2008-12-20
 
             Put CPAN upload in the right directory.  Duh.
@@ -13,6 +29,12 @@ Revision history for Apache2-Controller
             OpenID!  Rockin.  It doesn't preserve post or get vars
             yet from the prior request across the openid redirect cycle,
             but it's good enough to release.  Hurrah!
+
+            Instead of using PerlCleanupHandler to save session and
+            commit database, it uses PerlLogHandler while the
+            connection is still open.  Otherwise, session untying
+            and database commits may not be processed synchronously
+            before the next request that depends on those changes.
 
 0.110.000   2008-08-06
 

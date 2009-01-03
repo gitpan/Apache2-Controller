@@ -50,6 +50,7 @@ my @requires = qw(
     IPC::Open3
     List::MoreUtils
     LWPx::ParanoidAgent
+    Log::Dispatch
     Log::Log4perl
     Math::BigInt::GMP
     Readonly

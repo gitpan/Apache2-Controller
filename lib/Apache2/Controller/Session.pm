@@ -2,16 +2,16 @@ package Apache2::Controller::Session;
 
 =head1 NAME
 
-Apache2::Controller::Session - Apache2::Controller PerlHeaderParserHandler for Apache::Session
+Apache2::Controller::Session - Apache2::Controller with Apache::Session
 
 =head1 VERSION
 
-Version 1.000.001 - FIRST RELEASE
+Version 1.000.010 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.001');
+our $VERSION = version->new('1.000.010');
 
 =head1 SYNOPSIS
 
@@ -33,6 +33,7 @@ This example assumes use of L<Apache2::Controller::Session::Cookie>.
 
      A2C_Session_Cookie_Opts name  myapp_sessid
      A2C_Session_Class         Apache::Session::MySQL
+     A2C_Session_Secret        jfa803m8cma083ak803kjf9-32
 
      PerlHeaderParserHandler  Apache2::Controller::DBI::Connector  MyApp::Session
  </Location>
@@ -49,6 +50,11 @@ using C<< /tmp/a2c_sessions/<request hostname>/ >>
 and C<< /var/lock/a2c_sessions/<request hostname> >>
 
 =head1 DESCRIPTION
+
+This is a module to make an L<Apache::Session> store available
+to methods in your controllers.  It is not just a session id -
+if you just need a tracking mechanism or a way to store data
+in cookies, you should roll your own handler with L<Apache2::Cookie>.
 
 Your session module uses an Apache2::Controller::Session tracker module 
 as a base and you specify your L<Apache::Session> options either as
@@ -102,18 +108,18 @@ Here's a code example for Location /somewhere above:
  use Apache2::Controller::X;
 
  sub get_options {
-     my ($self) = @_;  # $self inherits Apache2::Controller::Session,
-                       # Apache2::Controller::Session::Cookie,
-                       # Apache2::Request, Apache2::RequestRec, etc...
+     my ($self) = @_; 
+
+     my $r = $self->{r};
      eval {
-         $self->pnotes->{dbh} ||= DBI->connect(
+         $r->pnotes->{dbh} ||= DBI->connect(
              'dbi:mysql:database=myapp;host=mydbhost';
              'myuser', 'mypassword'
          );
      };
      a2cx "cannot connect to DB: $EVAL_ERROR" if $EVAL_ERROR;
      
-     my $dbh = $self->pnotes->{dbh};    # save handle for later use
+     my $dbh = $r->pnotes->{dbh};    # save handle for later use
                                         # in controllers, etc.
 
      return {
@@ -127,9 +133,10 @@ be careful about transactions.  See L<DATABASE TRANSACTION SAFETY> below.
 
  # ...
 
-In your controller module, access the session in C<< $self->pnotes->{session} >>.
+In your controller module, access the session in C<< pnotes->{session} >>.
  
  package MyApp::Controller::SomeWhere::Overtherainbow;
+ use base qw( Apache2::Controller Apache2::Request );
  # ...
  sub default {
      my ($self) = @_;
@@ -166,15 +173,19 @@ to start transactions and use them normally.  Just make sure you
 use L<perlfunc/eval> correctly and roll back or commit your
 transactions. 
 
-If you decide to push a C<PerlLogHandler> or C<PerlCleanupHandler>
-to roll back transactions for broken connections or something, be aware
-that this handler pushes a log handler closure that
+If you decide to push a C<PerlLogHandler> 
+to roll back transactions for broken connections or something, 
+or C<PerlCleanupHandler> to do something else (don't use
+post-connection phases for database transactions or you'll get out of sync),
+be aware
+that this handler 'unshifts' a log handler closure that
 saves the copy in pnotes back into the tied hash.
-So, depending on what order you want, whether you want
-to save the session before or after your database cleanup handler,
-you may have to re-order the C<PerlLogHandler> stack with
+It does this by re-ordering the C<PerlLogHandler> stack with
 L<Apache2::RequestUtil/get_handlers> and C<set_handlers()>.
-(Would that work?  I don't know. YMMV.)
+So if you push another post-response handler that wants to
+choose whether to save the session or not, be aware that
+it may not work as you expect unless you re-order that
+phase's handler stack again.
 
 =head1 TO SAVE OR NOT TO SAVE
 
@@ -251,11 +262,13 @@ use base qw(
 use YAML::Syck;
 use Log::Log4perl qw(:easy);
 use File::Spec;
+use Digest::SHA qw( sha224_base64 );
 
 use Apache2::Module;
 use Apache2::Const -compile => qw( OK HTTP_MULTIPLE_CHOICES );
 use Apache2::RequestUtil ();
 use Apache2::Controller::X;
+use Apache2::Controller::Const qw( $DEFAULT_SESSION_SECRET );
 
 =head2 process
 
@@ -394,6 +407,42 @@ sub process {
     return Apache2::Const::OK;
 }
 
+=head2 signature
+
+ my $signature_string = $self->signature($session_id);
+
+Return the string which is the signature of the session id
+plus the secret.
+
+Override this in a subclass if you want to use something other
+than SHA224.  See L<Digest::SHA/sha224_base64>.
+
+The secret is the value associated with the directive A2C_Session_Secret,
+or the default if that directive was not used.
+
+See L<Apache2::Controller::Session::Cookie>,
+L<Apache2::Controller::Directives/A2C_Session_Secret>,
+L<Apache2::Controller::Const/$DEFAULT_SESSION_SECRET>.
+
+=cut
+
+sub signature {
+    my ($self, $sid) = @_;
+    a2cx "no sid param" if !defined $sid;
+
+    my $secret = $self->{secret} 
+        ||= $self->get_directive('A2C_Session_Secret') 
+        || $DEFAULT_SESSION_SECRET;
+
+    my $sig = sha224_base64( $sid . $secret );
+    DEBUG sub { Dump({
+        sid     => $sid,
+        secret  => $secret,
+        sig     => $sig,
+    })};
+    return sha224_base64( $sid . $secret );
+}
+
 =head2 get_options
 
 If you do not configure C<<A2C_Session_Opts>> or override the subroutine,
@@ -452,13 +501,18 @@ Apache2 configuration directives.  L<Apache2::Controller::Directives>
 
 =head1 SEE ALSO
 
-L<Apache2::Controller::Session::Cookie>, 
+L<Apache2::Controller::Session::Cookie>
 
-L<Apache::Session>,
+L<Apache2::Controller::Dispatch>
 
-L<Apache2::Controller::Dispatch>,
+L<Apache2::Controller>
 
-L<Apache2::Controller>,
+L<Apache::Session>
+
+=head1 THANKS
+
+Thanks to David Ihern for edumacating me about the
+proper session cookie signature algorithm.
 
 =head1 AUTHOR
 

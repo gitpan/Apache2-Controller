@@ -6,12 +6,12 @@ Apache2::Controller - framework for Apache2 handler apps
 
 =head1 VERSION
 
-Version 1.000.001 - FIRST RELEASE
+Version 1.000.010 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.001');
+our $VERSION = version->new('1.000.010');
 
 =head1 SYNOPSIS
 
@@ -24,7 +24,17 @@ method for the uri.
  use strict;
  use warnings FATAL => 'all';
 
- use base qw( Apache2::Controller );
+ # base Apache2::Request is optional, it would limit your
+ # choice of method names.  request object is in $self->{r}
+ # if you do not choose to use it to get access to the 
+ # Apache2 methods via $self.
+
+ use base qw( 
+    Apache2::Controller 
+    Apache2::Request
+ );
+
+ # important to have Apache2::Controller FIRST in bases
 
  use Apache2::Const -compile => qw( :http );
  sub allowed_methods {qw( default bar baz )}
@@ -93,12 +103,15 @@ It is intended as a framework for
 new applications specialized as Apache2 handlers, not as a means to 
 absorb existing applications or to create portable code.  
 
-Apache2::Controller subclasses Apache2::Request, and pulls in
-methods from L<Apache2::RequestRec>, L<Apache2::RequestIO>, 
-L<Apache2::RequestUtil>, L<Apache2::Log>, L<Apache2::Module>.
+Apache2::Controller instantiates the L<Apache2::Request> 
+object and puts it in C<< $self->{r} >>.  If you want access
+to the methods directly via C<< $self >>, simply use
+L<Apache2::Request> as a base and it will auto-delegate
+all the methods.  
+See L<Apache2::Request/SUBCLASSING Apache2::Request>.
 
-For using other Apache2 request extension methods, use 
-another base class like 
+=for comment
+
 L<Apache2::Controller::Upload> early in your C<use base> list, 
 which will add the methods from L<Apache2::Upload> when the
 L<Apache2::Request> object gets created.
@@ -107,7 +120,11 @@ modules to inherit from to allow file uploads and provide various handy
 file conversion routines, if you have the appropriate binaries 
 installed.
 
-L<Apache2::Controller::Render::Template> provides an easy way to
+=pod
+
+For using other Apache2::Controller extension methods, use 
+another base class like 
+L<Apache2::Controller::Render::Template>, provides an easy way to
 use Template Toolkit by default to render pages, selecting templates
 from a directory structure that corresponds to your controller URI's.
 
@@ -118,7 +135,12 @@ methods.
 Instead of abstracting Rube Goldberg devices around the Apache2 mod_perl 
 methods, it stays out 
 of your way and lets you use any and all of them directly through 
-C<$self> as you see fit.
+C<$self> as you see fit, if you use L<Apache2::Request> as a second base.
+But you don't have to do that, if you don't want potential namespace
+conflicts with your uri's.  For example, if you do use
+L<Apache2::Request> as a base, you couldn't have a uri 'params'
+or 'connection', for example, if you want to be able to use 
+those Apache2 family methods.
 
 Use L<Apache2::Controller::Dispatch> from your Apache2 config file to 
 send various URI requests to your page view modules.  See the 
@@ -146,8 +168,15 @@ of L<Apache2::Controller::Dispatch> and use that as a
 PerlInitHandler.  It will map a URI to an appropriate
 Apache2::Controller subclass object and method and will
 use C<<$r->push_handlers()>> if successful to push Apache2::Controller
-onto the modperl handler stack.  See L<Apache2::Controller::Dispatch>
+onto the modperl handler stack.  
+
+See L<Apache2::Controller::Dispatch>
 for more information and different types of URI dispatching.
+Some simple types are bundled, some of which depend on
+the C<< allowed_methods() >> subroutine and some which do not.
+You can also implement your own dispatch subclass which
+does things your way, moves allowed uris around depending
+on context in the request, or whatever.
 
 =head1 OTHER REQUEST PHASE HANDLERS
 
@@ -156,10 +185,12 @@ before your Apache2::Controller runs.
 
 Most of these handlers use L<Apache2::Controller::NonResponseBase>
 as a base for the object, which usually does not need to
-instantiate the L<Apache2::Request> object.
-So if your subclass methods need acces to the
-L<Apache2::RequestRec> object C<<$r>>, 
-it is in C<<$self->{r}>>.
+instantiate the L<Apache2::Request> object, because they
+usually run before the response phase, so you usually don't
+want to parse and cache the body if you want to use input filters.
+If your subclass methods of non-response Apache2::Controller
+components need access to the L<Apache2::RequestRec> object C<<$r>>, 
+it is always in C<<$self->{r}>>.
 
 Some other request phase handlers register later-stage handlers,
 for example to save the session or rollback the database 
@@ -188,23 +219,13 @@ and L<Apache2::Controller::Session::Cookie>.
 
 Implements OpenID logins and redirects to your specified login 
 controller by changing the dispatch selection on the fly.
-When authorized, username is put in C<<$r->pnotes->{session}{username}>>
-with a timestamp, and denies access after a set idle timeout.
-Requires use of Apache2::Controller::Session.
-
-UNIMPLEMENTED
 
 See L<Apache2::Controller::Authen::OpenID>.
 
-=head2 PerlAuthzHandler Apache2::Controller::Authz::Groups subclass
-
-Subclass this handler to implement groups, and configure
-by implementing routines that load config files or query 
-a database.
-
-UNIMPLEMENTED
-
-See L<Apache2::Controller::Authz::Groups>.
+As for Access and Authz phases of AAA, you should
+probably roll your own.  This framework isn't going
+to dictate the means of your data storage or how
+you organize your users.  See the mod_perl manual.
 
 =head1 Apache2::Controller RESPONSE PHASE HANDLER
 
@@ -214,9 +235,10 @@ Your controller uses
 
 =head2 SUBCLASS OF L<Apache2::Request>
 
-Apache2::Controller is a subclass of L<Apache2::Request>,
-which inherits the L<Apache2::RequestRec> object with most of
-the modperl2 request extension libraries loaded during 
+Most of the time you will want to use Apache2::Request as
+a second base.  If you do this, then your controller
+inherits the L<Apache2::RequestRec> methods with 
+(some) modperl2 request extension libraries loaded during 
 construction.  So you can call C<<$self->$methodname>> for any of
 the methods associated with L<Apache2::Request>, 
 L<Apache2::RequestRec> and some of their friends.  
@@ -224,45 +246,69 @@ Watch the log for warnings about redefined subroutines, or
 C<<use warnings FATAL => 'all'>> to keep yourself on the
 right track.
 
+To use a simplified example:
+
  package MyApp::C::SomeURIController;
- # ...
+ use base qw( 
+     Apache2::Controller 
+     Apache2::Request 
+ );
  
  sub set_shipping_address {
-    my ($self) = @_;
+     my ($self) = @_;
 
-    # $self->param() is Apache::Request param():
-    my ($shipto, $addr, $zip) 
-        = map {
-            my $detaint = "detaint_$_";
-            $self->$detaint( $self->param($_) )
-        } qw( shipto addr zip );
-    # ...
+     # $self->param() is Apache::Request param():
+     my ($shipto, $addr, $zip) 
+         = map {
+             my $detaint = "detaint_$_";
+             $self->$detaint( $self->param($_) )
+                 || return Apache2::Const::SERVER_ERROR;
+         } qw( shipto addr zip );
+     $self->content_type('text/plain');
+     $self->print('Your package is on its way.');
+     return Apache2::Const::HTTP_OK
  }
 
  sub detaint_shipto {   # ...
  sub detaint_addr   {   # ...
  sub detaint_zip    {   # ...
 
-At any rate, your Apache2::Controller child object subclasses 
-itself into Apache2::Request and delegates all those methods
+At any rate, your Apache2::Controller child object 
+normally subclasses 
+itself into Apache2::Request which magically
+delegates all those methods
 to the internal hash value $self->{r}, which is the actual 
 Apache2::Request object.
-See L<Apache2::Request> about those gory details.  Whether 
+See L<Apache2::Request> about those gory details.  
+
+Whether 
 you call C<< $self->$apache2_request_method >> or 
 C<< $self->{r}->$apache2_request_method >> matters not,
 you still ask the same object, so you might as well use
 C<< $self->... >> to make it look clean.
 
+But, if you don't want to pollute your namespace of
+potential URI handlers with the Apache2::* family
+method namespace, don't use Apache2::Request as a base.
+C<< $self->{r} >> is still an Apache2::Request object.
+
+The rest of this manual assumes that you do use
+L<Apache2::Request> as a base in your controller,
+and refers to its methods via C<< $self >>.  Just
+keep in mind that you don't have to, but can
+access those methods via C<< $self->{r} >>.
+
 =head1 RETURN VALUES
 
 Your controller methods should use eval { } if necessary and
 act accordingly, set the right things for C<Apache2::RequestRec> 
-and return the right C<Apache2::Const/:http>.
+and return the right HTTP constant.  See L<Apache2::Const/:http>
+and L<Apache2::Controller::Refcard>.
 
 In the event of an error, if you wish, use L<Apache2::Controller::X>
 and throw one with field 'status' set to a valid HTTP return code.  
 This lets you implement nice error templates if your controller uses 
-L<Apache2::Controller::Render::Template> as a second base.
+L<Apache2::Controller::Render::Template> as a base.
 See L<ERRORS> below.
 
 Success in the controller method normally should just return the
@@ -279,21 +325,14 @@ and corresponding numbers and messages.
 
 For external redirects,
 set C<< $self->err_headers_out->add(Location => 'http://foo.bar') >>
-and return C<< $self->status(Apache2::Const::REDIRECT) >>.  C<< $self >>
-is (delegates to) the L<Apache2::Request> object which inherits from 
-L<Apache2::RequestRec> and friends.  You have access to everything
-without dereferencing pointers, for instance, internal redirects
-that process a new request within a subprocess of the current one.
-(This dereferences C<< $self->{r} >> internally but it makes your
-controller logic more simple and direct.)
+and return C<< $self->status(Apache2::Const::REDIRECT) >>.  
 
 Keep in mind that if you use other request phase processors that
 push a C<PerlLogHandler> like 
 L<Apache2::Controller::DBI::Connector> or
-L<Apache2::Controller::Session>, those will still run.
-So in the case of a redirect while you have an open transaction,
-or where you do not want to save tied session changes when redirecting,
-you should trap errors with C<< eval >> and deal with it accordingly.
+L<Apache2::Controller::Session>, those will still run,
+but normally will not save changes or commit transactions
+if you set or return an http status outside of the HTTP_OK range.
 
 You should also not fiddle with the connection by causing
 Apache2 to close it prematurely, else these handlers may not
@@ -361,17 +400,23 @@ in your controller, you'll have to use C<<eval>> and then
 set C<<$self->notes->{a2c_connection_aborted}>> before you return
 the error code.
 
+C<< error() >> does not have to roll back DBI handles if you
+use L<Apache2::Controller::DBI::Connector>, as this is
+rolled back automatically in the C<< PerlLogHandler >>
+phase if you don't commit the transaction.
+
 =head1 CONTROLLER CLOSURES
 
 Apache2::Controller's package space structure lets you take advantage
 of closures that access variables in your controller subclass
 package space, which are cached by modperl in child processes
 across independent web requests.  Be careful with that and use
-Devel::Size to keep memory usage down.
+Devel::Size to keep memory usage down.  I have no idea how this
+would work under threaded mpm.
 
 =head1 CONTENT TYPE
 
-Your controller should set content type with C<$self-E<gt>content_type($ct)>
+Your controller should set content type with C<< $self->content_type() >>
 to something specific if you need that.  Otherwise it will let
 mod_perl set it to whatever it chooses when you start to print.
 This is usually text/html.
@@ -382,13 +427,13 @@ Apache2::Controller uses L<Log::Log4perl>.  See that module
 for information on how to set up a format file or statement.
 For example, in a perl startup script called at Apache2 start time,
 do something like:
- 
- use Log::Log4perl; # 'Screen' is STDERR, which is error log
- my $logconf = q{
-    log4perl.rootLogger=DEBUG, Screen
-    log4perl.appender.Screen=Log::Log4perl::Appender::Screen
-    log4perl.appender.Screen.layout=PatternLayout
-    log4perl.appender.Screen.layout.ConversionPattern=%M [%L]: %m%n
+
+ use Log::Log4perl; 
+     log4perl.rootLogger=DEBUG, LogFile
+     log4perl.appender.LogFile=Log::Log4perl::Appender::File
+     log4perl.appender.LogFile.filename=/var/log/mysite_error_log
+     log4perl.appender.LogFile.layout=PatternLayout
+     log4perl.appender.LogFile.layout.ConversionPattern=%M [%L]: %m%n
  };
  Log::Log4perl->init(\$logconf);
 
@@ -418,7 +463,8 @@ highly optimized handlers for specific URI's while having a universal
 application installer.  
 
 Picture if you will, a programming utopia in which all engineers
-are respected, highly paid and content.  
+are respected, highly paid and content, and managers make
+correct decisions to rely on open-source software.
 
 You deploy the same Apache, the
 same CPAN modules and your whole application package to every server,
@@ -444,7 +490,7 @@ use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
 
-use base qw( Apache2::Request Apache2::Controller::Methods );
+use base qw( Apache2::Controller::Methods );
 
 use Readonly;
 use Scalar::Util qw( blessed );
@@ -460,7 +506,7 @@ use HTTP::Status qw( status_message );
 use Scalar::Util qw( looks_like_number );
 
 use Apache2::Controller::X;
-use Apache2::Controller::Funk qw( check_allowed_method log_bad_request_reason );
+use Apache2::Controller::Funk qw( log_bad_request_reason );
 
 use Apache2::Request;
 use Apache2::RequestRec ();
@@ -472,38 +518,96 @@ use Apache2::Const -compile => qw( :common :http );
 
 =head1 FUNCTIONS
 
-=head2 new
+=head2 a2c_new
 
- $handler = MyApp::C::ControllerSubclass->new( Apache2::RequestRec object )
+ $handler = MyApp::C::ControllerSubclass->a2c_new( Apache2::RequestRec object )
 
 This is called by handler() to create the Apache2::Controller object
 via the module chosen by your L<Apache2::Controller::Dispatch> subclass.
 
-If your controller defines local TEMP_DIR or POST_MAX or the
-L<Apache2::Controller::Directives> A2C_TEMP_DIR or A2C_POST_MAX,
-these will be applied as settings during construction of the
-L<Apache2::Request> object from the L<Apache2::RequestRec> object.
+We use C<< a2c_new >> instead of the conventional C<< new >>
+because, in case you want to suck in the L<Apache2::Request>
+methods with that module's automagic, then you don't get
+confused about how C<<SUPER::>> behaves.  Otherwise you
+get into a mess of keeping track of the order of bases
+so you don't call C<< Apache2::Request->new() >> by accident,
+which breaks everything.
 
-=head3 subclassing new( )
+=head3 subclassing C<a2c_new()>
+
+To set params for the L<Apache2::Request> object,
+you have to subclass C<a2c_new()>.
+
+ package MyApp::ControllerBase;
+ use base qw( Apache2::Controller Apache2::Request );
+
+ sub a2c_new {
+     my ($class, $r) = @_;
+     return SUPER::new(
+         $class, $r,
+         POST_MAX => 65_535,
+         TEMP_DIR => '/dev/shm',
+     );
+     # $self is already blessed in the class hierarchy
+ }
+
+ package MyApp::Controller::SomeURI;
+ use base qw( MyApp::ControllerBase );
+ sub allowed_methods qw( uri_one uri_two );
+ sub uri_one { # ...
 
 If you need to do the same stuff every time a request
-starts, you can override the constructor.
+starts, you can override the constructor through a
+class hierarchy.
 
- package MyApp::InitController;
+ package MyApp::ControllerBase;
+ use base qw( Apache2::Controller Apache2::Request );
+
  sub new {
-     my $self = SUPER::new(@_);
-     $self->push_handlers(PerlCleanupHandler => sub {
-         my ($r) = @_;
-         my $dbh = $r->pnotes->{dbh};
-         $dbh->rollback() unless $r->notes->{commit_success};
-     });    # implements some convention that you set 'commit_success', say
+     my ($class, $r, @apr_override_args) = @_;
+     my $self = SUPER::new(
+         $class, $r,
+         POST_MAX => 65_535,
+         TEMP_DIR => '/dev/shm',
+         @apr_override_args,
+     );
+
+     # $self is already blessed in the class hierarchy
+
+     # do request-startup stuff common to all controller modules
+
      return $self;
  }
+
+ package MyApp::Controller::SomeURI;
+ use base qw( MyApp::ControllerBase );
+ sub allowed_methods qw( uri_one uri_two );
+ sub new {
+     my ($class, $r) = @_;
+
+     my $self = SUPER::a2c_new(
+        $class, $r,
+     );
+
+     # no need to bless, A2C blesses into the child class
+
+     # do request-startup stuff for this specific controller
+
+     return $self;
+ }
+
+ sub uri_one {
+     my ($self) = @_;
+     $self->content_type('image/gif');
+     # ...
+     return Apache2::Const::HTTP_OK;
+ }
+ sub uri_two { # ...
 
 Similarly, to do something always at the end of every 
 request, from within the dispatched PerlResponseHandler:
 
- package MyApp::DestroyController;
+ package MyApp::Controller::SomeURI;
  use Devel::Size;
  use Log::Log4perl qw(:easy);
  my $MAX = 40 * 1024 * 1024;
@@ -514,13 +618,6 @@ request, from within the dispatched PerlResponseHandler:
      return; # self is destroyed
  }
 
-And your subclass is:
-
- package MyApp::Controller::Foo;
- use base qw( Apache2::Controller MyApp::InitController MyApp::DestroyController );
-
- # ...
-
 See L<USING INHERITANCE> below for more tips.
 
 =cut
@@ -528,34 +625,29 @@ See L<USING INHERITANCE> below for more tips.
 my %temp_dirs  = ( );
 my %post_maxes = ( );
 
-sub new {
-    my ($class, $r) = @_;
+sub a2c_new {
+    my ($class, $r, @apr_opts) = @_;
 
-    DEBUG("new $class, reqrec is '$r'");
+    DEBUG sub {
+        "new $class, reqrec is '$r', apr_opts:\n".Dump(\@apr_opts)
+    };
 
     my $self = {
         class       => $class,
-        r           => $r,      
     };
-    # populate r with Apache2::RequestRec obj so pnotes works
-    # to get the directives for creating Apache2::Request obj
 
     bless $self, $class;
 
-    DEBUG("creating Apache2::Request object");
-    my $req = Apache2::Request->new(
-        $r, $self->get_apache2_request_opts($class) 
-    );
-    DEBUG("request object is '$req'");
+    DEBUG "creating Apache2::Request object";
+    my $req = Apache2::Request->new( $r, @apr_opts );
+    DEBUG "request object is '$req'";
 
-    $self->{r} = $req;  # Apache2::Request subclass automagic
+    $self->{r} = $req;  # for Apache2::Request subclass automagic
 
     my $notes  = $req->notes;
     my $pnotes = $req->pnotes;
 
     my $method = $notes->{method};
-
-    check_allowed_method($class => $method);  # double-check, i guess
 
     $self->{method}      = $method;
     $self->{path_args}   = $pnotes->{path_args};
@@ -571,18 +663,18 @@ sub new {
         # so the cleanup handler will find all changes made to it
     }
 
-    DEBUG(sub { Dump({
+    DEBUG sub { Dump({
         # for simple debugging, stringify objects, otherwise this can get huge
         map {($_ => defined $self->{$_} ? "$self->{$_}" : undef)} keys %$self 
-    }) });
+    }) };
 
     return $self;
 }
 
 =head1 METHODS
 
-Methods are also extended by 
-L<Apache2::Controller::Methods|Apache2::Controller::Methods>.
+Methods are also extended by other modules in the A2C family.
+See L<Apache2::Controller::Methods>.
 
 =head2 handler
 
@@ -619,13 +711,13 @@ sub handler : method {
     my ($handler, $status, $X) = ( );
     eval {
 
-        $handler = $class->new($r);
+        $handler = $class->a2c_new($r);
         $method  = $handler->{method};
 
         DEBUG("executing $class -> $method()");
         my $args = $r->pnotes->{path_args} || [];
         $status = $handler->$method(@{$args});
-        $status = $handler->status() if !defined $status;
+        $status = $r->status() if !defined $status;
 
         if (defined $status) {
             if (ref $status || !looks_like_number($status)) {
@@ -725,7 +817,7 @@ routines that Apache2::Controller would have to check for in your
 controller module.  
 
 Instead, you use inheritance to streamline your code and share
-common pieces, like in L<subclassing new( )> above.
+common pieces, like in L<subclassing a2c_new( )> above.
 
 If your methods need to do cleanup after finishing,
 for example,
@@ -738,7 +830,7 @@ they should add a line to call a shared cleanup method.
  }
 
  package MyApp::C::Foo;
- use base qw( Apache2::Controller MyApp::Cleanup );
+ use base qw( Apache2::Controller Apache2::Request MyApp::Cleanup );
  sub allowed_methods {qw( foo bar )}
 
  sub foo {
@@ -746,16 +838,36 @@ they should add a line to call a shared cleanup method.
      $self->cleanup();
      return;
  }
-
+ # or...
  sub bar {
      # ...
-     $self->cleanup();
+     $self->push_handler(PerlCleanupHandler => sub {
+         # ...
+     });
      return;
  }
 
 Or better yet...
 
  package MyApp::Cleanup;
+ sub DESTROY {
+     my ($self) = @_;
+     # ...
+ }
+
+ package MyApp::C::Foo;
+ use base qw( Apache2::Controller MyApp::Cleanup );
+ sub allowed_methods {qw( foo bar )}
+
+ sub foo {
+    # ...
+    return;
+ }
+
+ sub bar {
+    # ...
+    return;
+ }
 
 There is no need for a predefined method sequence that
 tries to run for each request, because Apache2 already
@@ -766,8 +878,9 @@ solutions to problems for which elaborate measures are commonly
 re-invented.  For example if you wanted cleanup done the same way every 
 time without having to remember that C<< $self->cleanup() >> line 
 for each new
-method, overload the constructor as per L<subclassing new( )> above 
-and register a PerlCleanupHandler for every request instead.
+method, overload the constructor as per L<subclassing a2c_new( )> above 
+and register a PerlCleanupHandler for every request instead,
+or use a base with a DESTROY method.
 
 Otherwise the framework ends up doing a lot of work every time
 to ask, "did they implement this?  did they implement that?"
@@ -781,7 +894,13 @@ The framework won't provide you with any more structure.
 Browse the source package from CPAN
 and check out t/lib/* and t/conf/extra.conf.last.in.
 
-=head1 SEE ALSO
+=head1 RELATED MODULES
+
+L<Apache2::Controller::Directives>
+
+L<Apache2::Controller::Methods>
+
+L<Apache2::Controller::X>
 
 L<Apache2::Controller::Dispatch>
 
@@ -793,17 +912,34 @@ L<Apache2::Controller::DBI::Connector>
 
 L<Apache2::Controller::Auth::OpenID>
 
-L<Apache2::Controller::X>
-
 L<Apache2::Controller::Refcard>
 
 L<Apache2::Controller::Funk>
+
+=head1 SEE ALSO
 
 L<Apache2::RequestRec> and friends
 
 L<Apache2::Request>
 
+L<Apache2::AuthenOpenID>
+
 L<http://perl.apache.org>
+
+L<http://perl.apache.org/docs/2.0/user/handlers/http.html>
+
+=head1 THANKS
+
+Many thanks to David Ihnen, Adam Prime, André Warnier
+and all the great people on the modperl mailing list.
+
+Special thanks to Nobuo Danjou for Apache2::AuthenOpenID
+which edumacated me on how the OpenID authen module
+should work.
+
+Of course, thanks to the many mod_perl and Apache authors
+and all the CPAN authors whose modules this depends on.
+Wow!  This stuff is so cool!
 
 =head1 AUTHOR
 

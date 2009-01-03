@@ -6,12 +6,12 @@ Apache2::Controller::Const - constants for Apache2::Controller
 
 =head1 VERSION
 
-Version 1.000.001 - FIRST RELEASE
+Version 1.000.010 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.001');
+our $VERSION = version->new('1.000.010');
 
 =head1 SYNOPSIS
 
@@ -31,12 +31,16 @@ use strict;
 use warnings FATAL => 'all';
 use Readonly;
 
+use Log::Log4perl qw( :levels );
+use Apache2::Const -compile => qw( :log );
+
 use base 'Exporter';
 
 our @EXPORT_OK = qw(
     @RANDCHARS
     $NOT_GOOD_CHARS
     $DEFAULT_CONSUMER_SECRET
+    $DEFAULT_SESSION_SECRET
 );
 
 =head2 @RANDCHARS
@@ -60,6 +64,30 @@ Maybe get rid of this one...
 =cut
 
 Readonly our $NOT_GOOD_CHARS => qr{ [^\w\#\@\.\-:/, ] }mxs;
+
+=head2 $DEFAULT_CONSUMER_SECRET
+
+Some hardcoded garbage characters used to salt the sha hash of time
+for the OpenID consumer secret if one isn't specified or generated.
+
+See L<Apache2::Controller::Auth::OpenID> and
+L<Apache2::Controller::Directives/A2C_Auth_OpenID_Consumer_Secret>.
+
+=cut
+
+Readonly our $DEFAULT_CONSUMER_SECRET => q|-qf_AD4#~a{~3)84cCvd+$6R89+,[l|;
+
+=head2 $DEFAULT_SESSION_SECRET
+
+Some hardcoded garbage characters used to salt the sha hash of time
+for the session key secret if one isn't specified or generated.
+
+See L<Apache2::Controller::Session::Cookie> and
+L<Apache2::Controller::Directives/A2C_Session_Secret>.
+
+=cut
+
+Readonly our $DEFAULT_SESSION_SECRET => q|Je52oN~$VSE.8PNs-e$5tRzB<=l.IC|;
 
 =head1 SEE ALSO
 

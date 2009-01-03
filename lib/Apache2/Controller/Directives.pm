@@ -6,12 +6,12 @@ Apache2::Controller::Directives - server config directives for A2C
 
 =head1 VERSION
 
-Version 1.000.001 - FIRST RELEASE
+Version 1.000.010 - FIRST RELEASE
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.001');
+our $VERSION = version->new('1.000.010');
 
 =head1 SYNOPSIS
 
@@ -22,6 +22,11 @@ our $VERSION = version->new('1.000.001');
  A2C_Render_Template_Path /var/myapp/templates
 
  # etc.
+
+All values are detainted using C<< m{ \A (.*) \z }mxs >>,
+since they are assumed to be trusted because they come
+from the server config file.  As long as you don't give
+your users the ability to set directives, it should be okay.
 
 =cut
 
@@ -90,6 +95,19 @@ my @directives = (
             # example:
             A2C_Session_Opts   Directory       /tmp/sessions
             A2C_Session_Opts   LockDirectory   /var/lock/sessions
+        },
+    },
+    {
+        name            => 'A2C_Session_Secret',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::RAW_ARGS,
+        errmsg          => q{
+            # specify a constant secret for continuity across server restarts
+            A2C_Session_Secret  foobar
+
+            # if no parameters, server startup will generate a secret,
+            # but this won't work for cluster farms etc.
+            A2C_Session_Secret
         },
     },
     {
@@ -228,16 +246,29 @@ my @directives = (
         },
     },
     {
-        name            => 'A2C_Auth_OpenID_Allow_Logins',
+        name            => 'A2C_Auth_OpenID_Allow_Login',
         req_override    => Apache2::Const::OR_ALL,
         args_how        => Apache2::Const::NO_ARGS,
-        errmsg          => 'example: A2C_Auth_OpenID_Allow_Logins',
+        errmsg          => 'example: A2C_Auth_OpenID_Allow_Login',
     },
     {
         name            => 'A2C_Auth_OpenID_Consumer_Secret',
         req_override    => Apache2::Const::OR_ALL,
         args_how        => Apache2::Const::RAW_ARGS,
-        errmsg          => 'example: A2C_Auth_OpenID_Consumer_Secret foobar',
+        errmsg          => q{
+            # specify a constant secret for continuity across server restarts
+            A2C_Auth_OpenID_Consumer_Secret  foobar
+
+            # if no parameters, server startup will generate a secret,
+            # but this won't work for cluster farms etc.
+            A2C_Auth_OpenID_Consumer_Secret
+        },
+    },
+    {
+        name            => 'A2C_Auth_OpenID_NoPreserveParams',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::NO_ARGS,
+        errmsg          => 'example: A2C_Auth_OpenID_NoPreserveParams',
     },
 );
 
@@ -264,6 +295,8 @@ a dispatch map with one 'default' entry with that package.
 sub A2C_Dispatch_Map {
     my ($self, $parms, $value) = @_;
 
+    ($value) = $value =~ m{ \A (.*) \z }mxs;
+
     if ($value =~ m{ :: }mxs) {
         $self->{A2C_Dispatch_Map} = { default => $value };
         return;
@@ -275,8 +308,19 @@ sub A2C_Dispatch_Map {
         if !(-e $file && -f _ && -r _);
     
     # why not go ahead and load the file!
-    $self->{A2C_Dispatch_Map} = LoadFile($file)
-        || croak "Could not load A2C_Dispatch_Map $file: $OS_ERROR";
+
+    # slurp it in so it can be detainted.
+
+    my $file_contents;
+    {   local $/;
+        open my $loadfile_fh, '<', $file 
+            || croak "Cannot read A2C_Dispatch_Map $file: $OS_ERROR";
+        $file_contents = <$loadfile_fh>;
+        close $loadfile_fh;
+    }
+
+    eval { $self->{A2C_Dispatch_Map} = Load($file_contents) };
+    croak "Could not load A2C_Dispatch_Map $file: $EVAL_ERROR" if $EVAL_ERROR;
 
   # DEBUG("success!");
     return;
@@ -300,7 +344,12 @@ this does not appear to work?  It returns an empty hash.)
 =cut
 
 sub A2C_Render_Template_Path {
-    my ($self, $parms, @directories) = @_;
+    my ($self, $parms, @directories_untainted) = @_;
+
+    my @directories = map { 
+        my ($val) = $_ =~ m{ \A (.*) \z }mxs;
+        $val;
+    } @directories_untainted;
 
     # uhh... this doesn't work?
   # my $srv_cfg = Apache2::Module::get_config($self, $parms->server);
@@ -308,6 +357,8 @@ sub A2C_Render_Template_Path {
   #     map {("$_" => $srv_cfg->{$_})} keys %{$srv_cfg}
   # }) });
   # DEBUG("server is ".$parms->server);
+
+    # I need to figure out how to merge these or something
 
     croak("A2C_Render_Template_Path '$_' does not exist or is not readable.") 
         for grep !( -d $_ && -r _ ), @directories;
@@ -359,6 +410,7 @@ Single argument, the class for the tied session hash.  L<Apache::Session>.
 
 sub A2C_Session_Class {
     my ($self, $parms, $class) = @_;
+    ($class) = $class =~ m{ \A (.*) \z }mxs;
     $self->{A2C_Session_Class} = $class;
 }
 
@@ -375,6 +427,33 @@ sub A2C_Session_Opts {
     my ($self, $parms, $key, $val) = @_;
     $self->hash_assign('A2C_Session_Opts', $key, $val);
     return;
+}
+
+=head2 A2C_Session_Secret
+
+ # generate a random 30-character string:
+ A2C_Session_Secret
+
+ # specify your own string:
+ A2C_Session_Secret jsd9e9j#*@JMf39kc3
+
+This server-wide constant string will used to verify the session id.
+See L<Apache2::Controller::Session>.
+
+If you don't specify the value, it will generate a default 30-character
+random string, but this will regenerate on server restarts, and would not
+work for a cluster of servers serving the same application.
+
+=cut
+
+sub A2C_Session_Secret {
+    my ($self, $parms, $val) = @_;
+    if (!defined $val || $val =~ m{ \A \s* \z }mxs) {
+        srand;
+        $val = join('', map $RANDCHARS[int(rand(@RANDCHARS))], 1..30);
+    }
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
+    $self->{A2C_Session_Secret} = $val;
 }
 
 =head2 A2C_Session_Cookie_Opts
@@ -408,6 +487,7 @@ Single argument, the DSN string.  L<DBI>
 
 sub A2C_DBI_DSN {
     my ($self, $parms, $dsn) = @_;
+    ($dsn) = $dsn =~ m{ \A (.*) \z }mxs;
     $self->{A2C_DBI_DSN} = $dsn;
 }
 
@@ -421,6 +501,7 @@ Single argument, the DBI username.
 
 sub A2C_DBI_User {
     my ($self, $parms, $user) = @_;
+    ($user) = $user =~ m{ \A (.*) \z }mxs;
     $self->{A2C_DBI_User} = $user;
 }
 
@@ -434,6 +515,7 @@ Single argument, the DBI password.
 
 sub A2C_DBI_Password {
     my ($self, $parms, $password) = @_;
+    ($password) = $password =~ m{ \A (.*) \z }mxs;
     $self->{A2C_DBI_Password} = $password;
 }
 
@@ -462,6 +544,7 @@ Boolean.
 
 sub A2C_DBI_Cleanup {
     my ($self, $parms, $val) = @_;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $self->{A2C_DBI_Cleanup} = $val;
     return;
 }
@@ -476,6 +559,7 @@ String value.
 
 sub A2C_DBI_Pnotes_Name {
     my ($self, $parms, $val) = @_;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $self->{A2C_DBI_Pnotes_Name} = $val;
     return;
 }
@@ -493,6 +577,7 @@ If you don't use it, it uses a block eval to connect DBI.
 
 sub A2C_DBI_Class {
     my ($self, $parms, $val) = @_;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $self->{A2C_DBI_Class} = $val;
 }
 
@@ -540,6 +625,7 @@ Access will be allowed.
 sub A2C_Auth_OpenID_Login {
     my ($self, $parms, $val) = @_;
     $val = 'login' if !defined $val;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $val = $parms->path.'/'.$val if $val !~ m{ \A / }mxs;
     $self->{A2C_Auth_OpenID_Login} = $val;
 }
@@ -563,6 +649,7 @@ Access will be allowed.
 sub A2C_Auth_OpenID_Logout {
     my ($self, $parms, $val) = @_;
     $val = 'logout' if !defined $val;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $val = $parms->path.'/'.$val if $val !~ m{ \A / }mxs;
     $self->{A2C_Auth_OpenID_Logout} = $val;
 }
@@ -583,6 +670,7 @@ Access will be allowed.
 sub A2C_Auth_OpenID_Register {
     my ($self, $parms, $val) = @_;
     $val = 'register' if !defined $val;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $val = $parms->path.'/'.$val if $val !~ m{ \A / }mxs;
     $self->{A2C_Auth_OpenID_Register} = $val;
 }
@@ -618,6 +706,7 @@ my %time_multiplier = (
 sub A2C_Auth_OpenID_Timeout {
     my ($self, $parms, $val) = @_;
     $val ||= '+1h';
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     if ($val ne 'no timeout') {
         my ($num, $period) = $val =~ m{ \A \+? (\d+) ([YMDhms]?) \z }mxs;
         $period ||= 's';
@@ -640,7 +729,9 @@ user name and OpenID url fields.  Default == "openid".
 
 sub A2C_Auth_OpenID_Table {
     my ($self, $parms, $val) = @_;
-    $self->{A2C_Auth_OpenID_Table} = $val || 'openid';
+    $val ||= 'openid';
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
+    $self->{A2C_Auth_OpenID_Table} = $val;
 }
 
 =head2 A2C_Auth_OpenID_User_Field
@@ -653,7 +744,9 @@ Name of username field in table.  Default == "uname".
 
 sub A2C_Auth_OpenID_User_Field {
     my ($self, $parms, $val) = @_;
-    $self->{A2C_Auth_OpenID_User_Field} = $val || 'uname';
+    $val ||= 'uname';
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
+    $self->{A2C_Auth_OpenID_User_Field} = $val;
 }
 
 =head2 A2C_Auth_OpenID_URL_Field
@@ -666,7 +759,9 @@ Name of OpenID URL field in table.  Default == "openid_url".
 
 sub A2C_Auth_OpenID_URL_Field {
     my ($self, $parms, $val) = @_;
-    $self->{A2C_Auth_OpenID_URL_Field} = $val || 'openid_url';
+    $val ||= 'openid_url';
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
+    $self->{A2C_Auth_OpenID_URL_Field} = $val;
 }
 
 =head2 A2C_Auth_OpenID_DBI_Name
@@ -680,7 +775,9 @@ Default == "dbh".
 
 sub A2C_Auth_OpenID_DBI_Name {
     my ($self, $parms, $val) = @_;
-    $self->{A2C_Auth_OpenID_DBI_Name} = $val || 'dbh';
+    $val ||= 'dbh';
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
+    $self->{A2C_Auth_OpenID_DBI_Name} = $val;
 }
 
 =head2 A2C_Auth_OpenID_Trust_Root
@@ -696,6 +793,7 @@ is currently being requested.
 
 sub A2C_Auth_OpenID_Trust_Root {
     my ($self, $parms, $val) = @_;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $self->{A2C_Auth_OpenID_Trust_Root} = $val;
 }
 
@@ -713,6 +811,7 @@ want to be able to distribute to Debian.
 
 sub A2C_Auth_OpenID_LWP_Class {
     my ($self, $parms, $val) = @_;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $self->{A2C_Auth_OpenID_LWP_Class} = $val || 'LWPx::ParanoidAgent';
 }
 
@@ -779,7 +878,9 @@ time() for the sha224_base64 hash provided as the consumer_secret.
 See L<Net::OpenID::Consumer/consumer_secret>.
 
 If you don't specify the value, it will generate a default 30-character
-random string.
+random string, but this will regenerate on server restarts, and would not
+work for a cluster of servers serving the same application.
+
 
 =cut
 
@@ -789,7 +890,25 @@ sub A2C_Auth_OpenID_Consumer_Secret {
         srand;
         $val = join('', map $RANDCHARS[int(rand(@RANDCHARS))], 1..30);
     }
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
     $self->{A2C_Auth_OpenID_Consumer_Secret} = $val;
+}
+
+=head2 A2C_Auth_OpenID_NoPreserveParams
+
+ A2C_Auth_OpenID_NoPreserveParams
+
+Takes no arguments.  If directed, L<Apache2::Controller::Auth::OpenID>
+will not preserve GET/POST params.  I know a double-negative is
+frowned upon, but it makes the most sense here, because preserving
+GET/POST params should be the default behavior, and this turns
+off that behavior.
+
+=cut
+
+sub A2C_Auth_OpenID_NoPreserveParams {
+    my ($self, $parms) = @_;
+    $self->{A2C_Auth_OpenID_NoPreserveParams} = 1;
 }
 
 =head2 hash_assign 
@@ -827,6 +946,9 @@ sub hash_assign {
     my ($self, $directive, $key, $val) = @_;
 
     croak "No value for $directive {$key}." if !$val;
+
+    ($key) = $key =~ m{ \A (.*) \z }mxs;
+    ($val) = $val =~ m{ \A (.*) \z }mxs;
 
     if ($val eq '[') {
         $self->{$directive}{$key} = [ ] if !exists $self->{$directive}{$key};

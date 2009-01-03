@@ -1,10 +1,5 @@
 package Apache2::Controller::Test::OpenIDServer;
 
-BEGIN {
-    no warnings;
-    use Net::OpenID::Server;
-}
-
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
@@ -12,6 +7,8 @@ use English '-no_match_vars';
 use base qw(
     HTTP::Server::Simple::CGI
 );
+
+use Net::OpenID::Server;
 
 # try overriding signal handlers
 $HTTP::Server::Simple::SIG{ALRM} = sub { 
@@ -32,6 +29,7 @@ use Apache::TestServer;
 use Apache::TestRequest;
 use Apache2::Controller::Test::Funk qw( diag );
 use Apache2::Controller::Test::UnitConf;
+
 
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init(\$L4P_UNIT_CONF);
