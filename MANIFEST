@@ -4,6 +4,7 @@ Changes
 MANIFEST
 lib/Apache2/Controller/X.pm
 lib/Apache2/Controller/Log/DetectAbortedConnection.pm
+lib/Apache2/Controller/Log/SessionSave.pm
 lib/Apache2/Controller/Session.pm
 lib/Apache2/Controller/Refcard.pm
 lib/Apache2/Controller/DBI/Connector.pm

@@ -6,12 +6,12 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -228,10 +228,12 @@ sub find_controller {
         relative_uri        => $relative_uri,
     })});
 
-    $r->notes->{method} = $method;
-    $r->notes->{relative_uri} = $relative_uri;
-    $r->notes->{controller} = $controller;
-    $r->pnotes->{path_args} = \@path_args;
+    my $pnotes_a2c = $r->pnotes->{a2c} ||= { };
+
+    $pnotes_a2c->{method}       = $method;
+    $pnotes_a2c->{relative_uri} = $relative_uri;
+    $pnotes_a2c->{controller}   = $controller;
+    $pnotes_a2c->{path_args}    = \@path_args;
 
     return $controller;
 }
@@ -253,7 +255,11 @@ Mark Hedges, C<hedges +(a t)| scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

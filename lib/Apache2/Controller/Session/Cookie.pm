@@ -6,12 +6,12 @@ Apache2::Controller::Session::Cookie - track a sessionid with a cookie in A2C
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -69,9 +69,7 @@ Readonly my $DEFAULT_COOKIE_NAME => 'A2CSession';
 
 Get the session id from the cookie and verifies it.
 
-Sets C<< $r->notes->{session_id} >> to be the session id string.
-
-Sets C<< $r->pnotes->{session_cookie} >> to be the Apache2::Cookie object.
+Sets C<< $r->pnotes->{a2c}{session_id} >> to be the session id string.
 
 =cut
 
@@ -107,7 +105,7 @@ sub get_session_id {
     }
 
     my $r = $self->{r};
-    $r->notes->{session_id} = $sid || '';
+    $r->pnotes->{a2c}{session_id} = $sid || '';
 
     $self->{session_valid_sig} = $valid_sig;
     $self->{session_cookie} = $cookie;
@@ -149,9 +147,8 @@ sub set_session_id {
     DEBUG("baking cookie '$cookie'");
     $cookie->bake($r);
 
-    DEBUG("setting in notes and pnotes");
-    $r->notes->{session_id} = $session_id;
-    $r->pnotes->{session_cookie} = $cookie;
+    DEBUG('setting in pnotes');
+    $r->pnotes->{a2c}{session_id} = $session_id;
 
     DEBUG("done setting session_id");
     return;
@@ -177,6 +174,10 @@ Copyright 2008 Mark Hedges, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

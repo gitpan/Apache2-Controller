@@ -20,7 +20,7 @@ sub allowed_methods {qw( create_db force_timeout )}
 sub create_db {
     my ($self) = @_;
     DEBUG 'Creating database for OpenID test...';
-    my $dbh = $self->pnotes->{dbh} || a2cx 'no dbh in pnotes';
+    my $dbh = $self->pnotes->{a2c}{dbh} || a2cx 'no dbh in pnotes';
     eval {
         $dbh->do(q{
             CREATE TABLE openid (

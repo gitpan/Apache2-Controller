@@ -50,7 +50,7 @@ sub redirect {
 # try setting the same redirect data but set the force-save flag
 sub redirect_force_save {
     my ($self) = @_;
-    $self->notes->{a2c_session_force_save} = 1;
+    $self->pnotes->{a2c}{session_force_save} = 1;
     return $self->redirect();
 }
 

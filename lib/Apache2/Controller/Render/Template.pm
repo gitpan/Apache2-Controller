@@ -6,12 +6,12 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -45,7 +45,7 @@ See L<Apache2::Controller::Directives> and L<Apache2::Controller::DBI::Connector
     Apache2::Controller::Render::Template
  );
 
- use Apache2::Const -complie => qw( OK );
+ use Apache2::Const -compile => qw( HTTP_OK );
 
  sub allowed_methods {qw( default )}
 
@@ -53,7 +53,7 @@ See L<Apache2::Controller::Directives> and L<Apache2::Controller::DBI::Connector
     my ($self, @first, @last) = @_;
     my @path_args = $self->my_detaint_path_args('name'); # from $self->{path_args}
 
-    $self->{stash}{creditcards} = $self->pnotes->{dbh}->fetchall_arrayref(
+    $self->{stash}{creditcards} = $self->pnotes->{a2c}{dbh}->fetchall_arrayref(
         q{  SELECT ccnum, exp, addr1, zip, cac 
             FROM customer_credit_cards 
             WHERE lname = ? AND fname = ?
@@ -63,7 +63,7 @@ See L<Apache2::Controller::Directives> and L<Apache2::Controller::DBI::Connector
     # request was like http://myserver.xyz/foo/Larry/Wall
 
     $self->render();    # renders /var/myapp/templates/foo/default.html
-    return Apache2::Const::OK;
+    return Apache2::Const::HTTP_OK;
 
  }
 
@@ -132,7 +132,7 @@ use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
 
-use Apache2::Const -compile => qw( SERVER_ERROR OK );
+use Apache2::Const -compile => qw( SERVER_ERROR );
 use Apache2::Controller::X;
 
 use File::Spec;
@@ -234,7 +234,9 @@ Tip: if you plan to use render_fast(), write a test suite that
 tests the output of your page.
 
 Of course you could bypass rendering altogether and just use
-$self->print().  (Remember that $self is subclassed Apache2::Request.)
+$self->print().  (Remember that $self is 
+normally subclassed in L<Apache2::Request> which magically
+delegates to C<< $self->{r} >>.)
 Or maybe you should implement an ajax style control in the template
 and put a limit frame on the query above, or use a paging lib, etc. ...
 
@@ -243,7 +245,7 @@ and put a limit frame on the query above, or use a paging lib, etc. ...
 sub render_fast {
     my ($self) = @_;
 
-    $self->notes->{use_standard_errors} = 1;
+    $self->pnotes->{a2c}{use_standard_errors} = 1;
 
     my $template = $self->detect_template();
     DEBUG("processing template = '$template'");
@@ -446,8 +448,7 @@ sub detect_template {
         substr($loc, -1, 1, '') if substr($loc, -1) eq '/';
     }
 
-    (my $rel_uri = $self->notes->{relative_uri}) =~ s{ \A / }{}mxs;
-    a2cx 'notes->{relative_uri} not set' if !defined $rel_uri;
+    (my $rel_uri = ($self->pnotes->{a2c}{relative_uri} || '') ) =~ s{ \A / }{}mxs;
 
     my $file = "$self->{method}.html";
 
@@ -535,6 +536,10 @@ Copyright 2008 Mark Hedges, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

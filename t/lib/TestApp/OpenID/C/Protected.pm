@@ -70,7 +70,7 @@ sub register {
 
     my $url = $self->param('openid_url') || a2cx "No openid_url for test";
 
-    my $dbh = $self->pnotes->{dbh} || a2cx 'no dbh in pnotes';
+    my $dbh = $self->pnotes->{a2c}{dbh} || a2cx 'no dbh in pnotes';
     eval {
         $dbh->do(
             q{ INSERT INTO openid VALUES (?, ?) }, undef, 'a2ctest', $url

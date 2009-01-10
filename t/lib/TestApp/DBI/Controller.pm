@@ -34,7 +34,7 @@ sub working {
 
 sub handle_available {
     my ($self, @args) = @_;
-    my $dbh = $self->pnotes('dbh');
+    my $dbh = $self->pnotes->{a2c}{dbh};
     my $ref = ref $dbh || '[none]';
     $self->print("$ref is dbh class");
     return Apache2::Const::HTTP_OK;
@@ -42,7 +42,7 @@ sub handle_available {
 
 sub select_1 {
     my ($self, @args) = @_;
-    my $dbh = $self->pnotes('dbh');
+    my $dbh = $self->pnotes->{a2c}{dbh};
     my ($result) = $dbh->selectrow_array('select 1');
     $self->print( 
         $result == 1 ? "Query (select 1) works.\n" : "Query (select 1) broken.\n"
@@ -52,7 +52,7 @@ sub select_1 {
 
 sub exception_works {
     my ($self, @args) = @_;
-    my $dbh = $self->pnotes('dbh');
+    my $dbh = $self->pnotes->{a2c}{dbh};
     eval { $dbh->do('bogus query') };
     $self->print(
         $EVAL_ERROR && $EVAL_ERROR =~ m{ syntax \s+ error }mxs
@@ -64,7 +64,7 @@ sub exception_works {
 
 sub create_table {
     my ($self, @args) = @_;
-    my $dbh = $self->pnotes('dbh');
+    my $dbh = $self->pnotes->{a2c}{dbh};
     $dbh->do(q{ 
         CREATE TABLE test (  
             id          VARCHAR(10), 
@@ -78,7 +78,7 @@ sub create_table {
 
 sub insert_ok {
     my ($self, @args) = @_;
-    my $dbh = $self->pnotes('dbh');
+    my $dbh = $self->pnotes->{a2c}{dbh};
     $dbh->do(q{ INSERT INTO test (id, val) VALUES ('biz', 'baz') });
     my ($val) = $dbh->selectrow_array("SELECT val FROM test WHERE id = 'biz'");
     $val ||= '[insert did not work!]';
@@ -88,7 +88,7 @@ sub insert_ok {
 
 sub txn_goodquery {
     my ($self, @args) = @_;
-    my $dbh = $self->pnotes('dbh');
+    my $dbh = $self->pnotes->{a2c}{dbh};
     $dbh->begin_work;
     $dbh->do(q{ INSERT INTO test (id, val) VALUES ('boz', 'noz') });
     $dbh->commit;
@@ -100,7 +100,7 @@ sub txn_goodquery {
 
 sub txn_dont_commit {
     my ($self, @args) = @_;
-    my $dbh = $self->pnotes('dbh');
+    my $dbh = $self->pnotes->{a2c}{dbh};
     $dbh->begin_work;
     $dbh->do(q{ UPDATE test SET val = 'bogus' WHERE id = 'biz' });
     $self->print("Updated biz without commit.\n");
@@ -109,7 +109,7 @@ sub txn_dont_commit {
 
 sub txn_dont_commit_didnt_insert {
     my ($self, @args) = @_;
-    my $dbh = $self->pnotes('dbh');
+    my $dbh = $self->pnotes->{a2c}{dbh};
     my ($val) = $dbh->selectrow_array("SELECT val FROM test WHERE id = 'biz'");
     $val ||= '[no value]';
     $self->print("Verify no commit: biz = '$val'.");

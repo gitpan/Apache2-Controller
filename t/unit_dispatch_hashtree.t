@@ -130,14 +130,18 @@ for my $uri ('/', sort keys %{$tests}) {
         print "# unknown error: $EVAL_ERROR\n";
     }
 
-    my $notes = $mock->notes;
+    my $pnotes = $mock->pnotes;
+    DEBUG "PNOTES:\n".Dump($pnotes);
 
-    is($notes->{$_} => $tests->{$uri}{$_}, "$uri $_") 
+    is($pnotes->{a2c}{$_} => $tests->{$uri}{$_}, "$uri $_") 
         for qw( controller method relative_uri );
 
     if ($tests->{$uri}{path_args}) {
-        my $pnotes = $mock->pnotes;
-        is_deeply($pnotes->{path_args}, $tests->{$uri}{path_args}, "$uri path_args");
+        is_deeply(
+            $pnotes->{a2c}{path_args}, 
+            $tests->{$uri}{path_args}, 
+            "$uri path_args"
+        );
     }
 }
 

@@ -7,12 +7,12 @@ dispatch to controllers mapped by files in primary A2C_Render_Template_Path.
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -124,6 +124,10 @@ Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut

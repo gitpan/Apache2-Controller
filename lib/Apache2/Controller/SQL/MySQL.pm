@@ -6,12 +6,12 @@ Apache2::Controller::SQL::MySQL - useful database methods for MySQL
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -25,6 +25,8 @@ our $VERSION = version->new('1.000.010');
 =head1 DESCRIPTION
 
 Provides some useful methods for interacting with a MySQL database.
+
+This isn't really standard or a necessary part of A2C, I just find it handy.
 
 =head1 METHODS
 
@@ -46,7 +48,7 @@ Insert data into the database.
      return Apache2::Const::HTTP_OK;
  }
 
-Requires $self->pnotes->{dbh} be connected.  
+Requires a database handle be assigned to C<< $self->{dbh} >>.
 See L<Apache2::Controller::DBI::Connector>.
 
 Hashref argument supports these fields:
@@ -127,7 +129,11 @@ Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

@@ -140,7 +140,11 @@ Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

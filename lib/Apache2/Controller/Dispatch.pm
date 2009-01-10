@@ -6,12 +6,12 @@ Apache2::Controller::Dispatch - dispatch base class for Apache::Controller
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -151,11 +151,11 @@ internal stuff mostly, you don't have to implement your own
 type of dispatch mechanism unless you are a nut like me.
 
 Successful run of find_controller() should result in four items of
-data being set in request->notes and request->pnotes:
+data being set in request->pnotes->{a2c}:
 
 =over 4
 
-=item notes->{relative_uri} = matching part of uri relative to location
+=item pnotes->{a2c}{relative_uri} = matching part of uri relative to location
 
 This is the uri relative to the location. For example,
 if the dispatch module is the init handler in a C<< <Location /subdir> >>
@@ -164,28 +164,29 @@ relative_uri should be 'foo/bar' because this is the key of %dispatch_map
 that was matched.  /subdir/foo/bar is the 'virtual directory.'
 
 If there is no relative uri, for example if the uri requested was /subdir
-and this is the same as the location, then C<notes->{relative_uri}> would be set to 
+and this is the same as the location, then 
+C< pnotes->{a2c}{relative_uri} > would be set to 
 the empty string.
 
-=item notes->{controller} = selected package name
+=item pnotes->{a2c}{controller} = selected package name
 
-This should be the name of an Apache2::Controller subclass selected
+This should be the name (string) of an Apache2::Controller subclass selected
 for dispatch.
 
-=item notes->{method} = method name in controller to process the uri
+=item pnotes->{a2c}{method} = method name in controller to process the uri
 
 This is the name of the method of the controller to use for this request.
 
-=item pnotes->{path_args} = [ remaining path_info ]
+=item pnotes->{a2c}{path_args} = [ remaining path_info ]
 
 The remaining 'virtual directory' arguments of the uri.
-In the example above for notes->{relative_uri}, this is [ 'biz', 'zip' ].
+In the example above for pnotes->{a2c}{relative_uri}, this is [ 'biz', 'zip' ].
 
 =back
 
 @path_args is the array of remaining elements.  For example if your
 dispatch map contains the URI 'foo', and the incoming URI was '/foo/bar/baz',
-then $r->pnotes->{path_args} should be ['bar', 'baz'] before returning.
+then $r->pnotes->{a2c}{path_args} should be ['bar', 'baz'] before returning.
 
 =cut
 
@@ -231,15 +232,17 @@ sub process {
     my $r       = $self->{r};
     my $class   = $self->{class};
 
+    my $pnotes  = $r->pnotes;
+
     # find the controller module and method to dispatch the URI
     $self->find_controller();
-    my $controller = $self->{controller} = $r->notes->{controller};
+    my $controller = $self->{controller} = $pnotes->{a2c}{controller};
     DEBUG "found controller '$controller'";
 
     # save the dispatch class name in notes in case we have to
     # re-dispatch somewhere along the line if the uri changes
     # (this is done by Apache2::Controller::Auth::OpenID, for instance)
-    $r->notes->{a2c_dispatch_class} = $class;
+    $pnotes->{a2c}{dispatch_class} = $class;
 
     # set the handler for that class 
     # - this has to be the last thing it does in case an exception is thrown
@@ -345,6 +348,10 @@ Copyright 2008 Mark Hedges, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

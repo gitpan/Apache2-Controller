@@ -3,16 +3,17 @@ package Apache2::Controller::DBI::Connector;
 =head1 NAME
 
 Apache2::Controller::DBI::Connector - 
-connects L<DBI|DBI> to C<< $r->pnotes->{dbh} >>.
+connects L<DBI|DBI> to C<< $r->pnotes->{a2c}{dbh} >>
+or the key that you select.
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -72,7 +73,7 @@ key in pnotes using C<< A2C_DBI_PNOTES_NAME >> or C<< dbi_pnotes_name() >>.
 
 =head1 DESCRIPTION
 
-Connects a package-space L<DBI> handle to C<< $r->pnotes->{dbh} >>.
+Connects a package-space L<DBI> handle to C<< $r->pnotes->{a2c}{dbh} >>.
 
 You only need this where you need a database handle for every
 request, for example to connect to a session database regardless of
@@ -111,8 +112,8 @@ If you use a tiered database structure with one master record
 and many replicated nodes, you can do it this way.  Then you 
 overload C<< dbi_pnotes_name >> to provide the pnotes key,
 say "dbh_write" and "dbh_read".  In the controller get them
-with C<< $self->pnotes->{dbh_write} >> and
-C<< $self->pnotes->{dbh_read} >>, etc.
+with C<< $self->pnotes->{a2c}{dbh_write} >> and
+C<< $self->pnotes->{a2c}{dbh_read} >>, etc.
 
 If you subclass DBI, specify your DBI subclass name with
 the directive C<< A2C_DBI_Class >>.  Note that this has
@@ -123,7 +124,7 @@ do not specify this directive.
 =head1 Accessing $dbh from controller
 
 In your L<Apache2::Controller> module for the URI, access the
-database handle with C<< $self->pnotes->{dbh} >>, or instead of
+database handle with C<< $self->pnotes->{a2c}{dbh} >>, or instead of
 "dbh", whatever you set in directive C<< A2C_DBI_PNOTES_NAME >> 
 or return from your overloaded C<< dbi_pnotes_name() >> method.
 
@@ -182,7 +183,8 @@ use DBI;
 =head2 process
 
 Gets DBI connect arguments by calling C<< $self->dbi_connect_args() >>,
-then connects C<< $dbh >> and stashes it in C<< $r->pnotes->{dbh} >>.
+then connects C<< $dbh >> and stashes it in C<< $r->pnotes->{a2c}{dbh} >>
+or the name you select.
 
 The $dbh has a reference in package space, so controllers using it
 should always call commit or rollback.  It's good practice to use
@@ -209,24 +211,24 @@ sub process {
     my $pnotes_name = $self->dbi_pnotes_name;
 
     a2cx "Already a dbh in pnotes->{$pnotes_name}"
-        if exists $r->pnotes->{$pnotes_name};
+        if exists $r->pnotes->{a2c}{$pnotes_name};
 
     my $dbi_subclass = $self->get_directive('A2C_DBI_Class');
 
     if ($dbi_subclass) {
-        eval '$r->pnotes->{'.$pnotes_name.'} = '.$dbi_subclass.'->connect(@args)';
+        eval '$r->pnotes->{a2c}{'.$pnotes_name.'} = '.$dbi_subclass.'->connect(@args)';
     }
     else {
-        eval { $r->pnotes->{$pnotes_name} = DBI->connect(@args) };
+        eval { $r->pnotes->{a2c}{$pnotes_name} = DBI->connect(@args) };
     }
     a2cx $EVAL_ERROR if $EVAL_ERROR;
 
-    # push the cleanup handler if requested
+    # push the log rollback handler if requested
     if (0 && $self->dbi_cleanup) {
         # using a closure on '$pnotes_name' ... is this kosher?
         $r->push_handlers(PerlLogHandler => sub {
             my ($r) = @_;
-            my $dbh = $r->pnotes->{$pnotes_name} || return Apache2::Const::OK;
+            my $dbh = $r->pnotes->{a2c}{$pnotes_name} || return Apache2::Const::OK;
             if ($dbh->FETCH('BegunWork')) {
                 DEBUG("Cleanup handler: in txn.  Rolling back...");
                 eval { $dbh->rollback() };
@@ -283,7 +285,10 @@ in case other modules (like session) depend on it.
 
 =cut
 
-sub dbi_pnotes_name { return shift->get_directive('A2C_DBI_Pnotes_Name') || 'dbh' }
+sub dbi_pnotes_name { 
+    my ($self) = @_;
+    return $self->get_directive('A2C_DBI_Pnotes_Name') || 'dbh';
+}
 
 =head1 SEE ALSO
 
@@ -306,7 +311,11 @@ Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

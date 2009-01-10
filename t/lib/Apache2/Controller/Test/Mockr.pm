@@ -4,6 +4,8 @@ use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
 
+use Carp qw( cluck confess );
+
 use Apache2::Controller::Test::UnitConf;
 
 use Log::Log4perl qw(:easy);

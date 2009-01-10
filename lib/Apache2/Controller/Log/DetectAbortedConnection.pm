@@ -9,12 +9,12 @@ helper handler for detecting cancelled connections to the client.
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 DESCRIPTION
 
@@ -41,8 +41,13 @@ something else in the future.
 
 =head2 handler
 
-Sets C<<$r->notes->{a2c_connection_aborted}>> with the
-boolean results of C<<$r->connection->aborted()>> and returns.
+Sets C<< $r->pnotes->{a2c}{connection_aborted} >> with the
+boolean results of C<< $r->connection->aborted() >> and returns.
+
+I am not entirely sure why to cache this except that I couldn't
+figure out any other way to manually override this state
+even if you didn't abort the connection, if that's useful. 
+I may be over-planning here.
 
 =cut
 
@@ -58,7 +63,7 @@ use Log::Log4perl qw(:easy);
 sub handler {
     my ($r) = @_;
     DEBUG "detecting aborted connection...";
-    $r->notes->{a2c_connection_aborted} ||= $r->connection->aborted();
+    $r->pnotes->{a2c}{connection_aborted} ||= $r->connection->aborted();
     return Apache2::Const::OK;
 }
 
@@ -80,6 +85,10 @@ Copyright 2008 Mark Hedges, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

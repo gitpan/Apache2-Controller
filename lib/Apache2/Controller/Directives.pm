@@ -6,12 +6,12 @@ Apache2::Controller::Directives - server config directives for A2C
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -109,6 +109,12 @@ my @directives = (
             # but this won't work for cluster farms etc.
             A2C_Session_Secret
         },
+    },
+    {
+        name            => 'A2C_Session_Always_Save',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::NO_ARGS,
+        errmsg          => 'example: A2C_Session_Always_Save',
     },
     {
         name            => 'A2C_Session_Cookie_Opts',
@@ -456,6 +462,22 @@ sub A2C_Session_Secret {
     $self->{A2C_Session_Secret} = $val;
 }
 
+=head2 A2C_Session_Always_Save
+
+ A2C_Session_Always_Save
+
+Takes no arguments.  If directed, L<Apache2::Controller::Session>
+will update a top-level timestamp in 
+C<< $r->pnotes->{a2c}{session}{a2c_timestamp} >> so that
+L<Apache::Session> will always save.
+
+=cut
+
+sub A2C_Session_Always_Save {
+    my ($self, $parms) = @_;
+    $self->{A2C_Session_Always_Save} = 1;
+}
+
 =head2 A2C_Session_Cookie_Opts
 
  A2C_Session_Cookie_Opts name    myapp_sessionid
@@ -768,7 +790,7 @@ sub A2C_Auth_OpenID_URL_Field {
 
  A2C_Auth_OpenID_DBI_Name  dbh
 
-Name in C<< $r->pnotes >> of the connected L<DBI> handle.
+Name in C<< $r->pnotes->{a2c} >> of the connected L<DBI> handle.
 Default == "dbh".
 
 =cut
@@ -987,7 +1009,11 @@ Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

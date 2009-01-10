@@ -6,14 +6,18 @@ Apache2::Controller - framework for Apache2 handler apps
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
+
+Your application IS the controller.  A2C gets all the 
+abstractions out from between your controller logic and
+the Apache2 methods to control input/output, status etc.
 
 For Apache2 config file setup see L<Apache2::Controller::Dispatch>,
 which sets a PerlResponseHandler of Apache::Controller, which
@@ -34,13 +38,11 @@ method for the uri.
     Apache2::Request
  );
 
- # important to have Apache2::Controller FIRST in bases
-
  use Apache2::Const -compile => qw( :http );
  sub allowed_methods {qw( default bar baz )}
 
  # suppose '/foo' is the uri path dispatched to this controller
- # and your dispatch uses L<Apache2::Controller::Dispatch::Simple>
+ # and your dispatch uses Apache2::Controller::Dispatch::Simple
 
  # http://myapp.xyz/foo/
  sub default {
@@ -56,7 +58,7 @@ method for the uri.
      # @path_args is:
      #      qw( biz schnozz )
      #      @{ $self->{path_args} }
-     #      @{ $self->pnotes->{path_args} }
+     #      @{ $self->pnotes->{a2c}{path_args} }
 
      $self->content_type('text/html');
      $self->print(q{ <p>"WE ARE ALL KOSH"</p> });
@@ -95,7 +97,8 @@ object-oriented applications designed to run only under mod_perl
 children in high-performance Apache2 handler modules.  It features URL 
 dispatch with flexible configuration, auth plugins, a cookie tracker
 for Apache::Session, liberty for any storage models that work under mod_perl,
-rendering using Template Toolkit or direct printing with Apache,
+rendering using Template Toolkit or direct printing with Apache or whatever
+you want,
 and base inheritance configuration allowing you to 
 construct your applications as you need, without trying to be all things 
 to all people or assimilate the world.  
@@ -130,7 +133,9 @@ from a directory structure that corresponds to your controller URI's.
 
 Individual controller methods can specify plain text or other
 content types and print directly through inherited L<Apache2::RequestIO> 
-methods.
+methods, if you use L<Apache2::Request> as a second base and suck
+its methods in through that module's auto-magic.  
+See L<Apache2::Request/SUBCLASSING Apache2::Request>.
 
 Instead of abstracting Rube Goldberg devices around the Apache2 mod_perl 
 methods, it stays out 
@@ -140,7 +145,8 @@ But you don't have to do that, if you don't want potential namespace
 conflicts with your uri's.  For example, if you do use
 L<Apache2::Request> as a base, you couldn't have a uri 'params'
 or 'connection', for example, if you want to be able to use 
-those Apache2 family methods.
+those Apache2 family methods.  The L<Apache2::Request> object
+is always in C<< $self->{r} >> either way.
 
 Use L<Apache2::Controller::Dispatch> from your Apache2 config file to 
 send various URI requests to your page view modules.  See the 
@@ -150,10 +156,12 @@ to figure out what modules are available, but
 simply requires you to provide a hash that maps from uri paths to 
 controller modules.  Or, dispatch plugins can be created to implement
 the dispatcher's find_controller() method in some other way, like
-with a TRIE for big sites or using other algorithms.
+with a TRIE for big sites or using other algorithms,
+even dynamic ones based on context from the request.
 
 L<Apache2::Controller> is the base module for each controller module. 
-Your controller modules then contain a list of the method names which 
+Depending on your dispatch mechanism, controller modules usually 
+contain a list of the method names which 
 are allowed as uri paths under the controller.  Instead of implementing 
 a complex scheme of subroutine attributes, you maintain a list, which 
 also acts as your documentation in one place within the controller. This 
@@ -167,14 +175,17 @@ Apache2 server configuration.  Instead you make a subclass
 of L<Apache2::Controller::Dispatch> and use that as a
 PerlInitHandler.  It will map a URI to an appropriate
 Apache2::Controller subclass object and method and will
-use C<<$r->push_handlers()>> if successful to push Apache2::Controller
-onto the modperl handler stack.  
+use C<< $r->push_handlers() >> if successful to push Apache2::Controller
+onto the modperl response handler stack, which then creates
+the right handler object of your subclass and sends the
+request to the right method, handling errors in a nice way.
 
 See L<Apache2::Controller::Dispatch>
 for more information and different types of URI dispatching.
-Some simple types are bundled, some of which depend on
-the C<< allowed_methods() >> subroutine and some which do not.
-You can also implement your own dispatch subclass which
+Some simple types are bundled which depend on
+the C<< allowed_methods() >> subroutine in your controller,
+but that isn't a required feature - 
+you can also implement your own dispatch subclass which
 does things your way, moves allowed uris around depending
 on context in the request, or whatever.
 
@@ -189,27 +200,35 @@ instantiate the L<Apache2::Request> object, because they
 usually run before the response phase, so you usually don't
 want to parse and cache the body if you want to use input filters.
 If your subclass methods of non-response Apache2::Controller
-components need access to the L<Apache2::RequestRec> object C<<$r>>, 
-it is always in C<<$self->{r}>>.
+components need access to the L<Apache2::RequestRec> object C<< $r >>, 
+it is always in C<< $self->{r} >>.
 
 Some other request phase handlers register later-stage handlers,
-for example to save the session or rollback the database 
-transaction with C<PerlLogHandler>'s
+for example to save the session or rollback uncommitted database 
+transactions with C<PerlLogHandler>'s
 after the connection output is complete.
 
-The controller handler always returns your set HTTP status code
+The controller handler returns your set HTTP status code
 or OK (0) to Apache.  In general you return the status code
-that you want to set, or return OK.  I don't know what happens
-if you return DONE or DECLINED.  See L<Apache2::Const>
-and L<Apache2::Controller::Refcard>.
+that you want to set, or return OK.  Or you can set it with
+C<< $r->status() >> and return OK.  
+You can't return DONE or DECLINED. (If you find you need
+to do that for some reason please contact me.)
+
+See L<Apache2::Const/:http>
+and L<Apache2::Controller::Refcard>.  You can also set
+C<< status_line() >> or throw L<Apache2::Controller::X>
+exceptions to be processed by an error template,
+if you're using some form of template rendering - see
+the section on errors below.
 
 Add handlers in your config file with your own modules which 
 C<use base> to inherit from these classes as you need them:
 
 =head2 PerlHeaderParserHandler Apache2::Controller::Session
 
-C<<$r->pnotes->{session}>> fed from and stored to an 
-L<Apache::Session> tied hash.  Pushes a PerlLogHandler
+C<< $r->pnotes->{a2c}{session} >> automatically loaded from and 
+stored to an L<Apache::Session> tied hash.  Pushes a PerlLogHandler
 to save the session after the main controller returns OK.
 
 See L<Apache2::Controller::Session>
@@ -227,23 +246,25 @@ probably roll your own.  This framework isn't going
 to dictate the means of your data storage or how
 you organize your users.  See the mod_perl manual.
 
-=head1 Apache2::Controller RESPONSE PHASE HANDLER
+=head1 Apache2::Controller response phase handler
 
 Apache2::Controller is set as the PerlResponseHandler if 
 the dispatch class finds a valid module and method for the request.
-Your controller uses
 
-=head2 SUBCLASS OF L<Apache2::Request>
+=head2 Subclass L<Apache2::Request>
 
 Most of the time you will want to use Apache2::Request as
 a second base.  If you do this, then your controller
 inherits the L<Apache2::RequestRec> methods with 
 (some) modperl2 request extension libraries loaded during 
-construction.  So you can call C<<$self->$methodname>> for any of
+construction, or you can use others in the package namespace
+and automatically get the methods.  
+
+This way, you can call C<< $self->$methodname >> for any of
 the methods associated with L<Apache2::Request>, 
 L<Apache2::RequestRec> and some of their friends.  
 Watch the log for warnings about redefined subroutines, or 
-C<<use warnings FATAL => 'all'>> to keep yourself on the
+C<< use warnings FATAL => 'all' >> to keep yourself on the
 right track.
 
 To use a simplified example:
@@ -253,6 +274,12 @@ To use a simplified example:
      Apache2::Controller 
      Apache2::Request 
  );
+
+ my %pats = (
+     shipto => qr{ \A (.*?) \z }mxs,
+     addr   => qr{ \A (.*?) \z }mxs,
+     zip    => qr{ \A (\d{5}) \z }mxs,
+ );
  
  sub set_shipping_address {
      my ($self) = @_;
@@ -260,37 +287,35 @@ To use a simplified example:
      # $self->param() is Apache::Request param():
      my ($shipto, $addr, $zip) 
          = map {
-             my $detaint = "detaint_$_";
-             $self->$detaint( $self->param($_) )
-                 || return Apache2::Const::SERVER_ERROR;
+             $self->param($_) =~ $pats{$_};
+             $1 || return Apache2::Const::SERVER_ERROR;
          } qw( shipto addr zip );
      $self->content_type('text/plain');
      $self->print('Your package is on its way.');
      return Apache2::Const::HTTP_OK
  }
 
- sub detaint_shipto {   # ...
- sub detaint_addr   {   # ...
- sub detaint_zip    {   # ...
-
 At any rate, your Apache2::Controller child object 
 normally subclasses 
 itself into Apache2::Request which magically
 delegates all those methods
-to the internal hash value $self->{r}, which is the actual 
+to the internal hash value C<< $self->{r} >>, which is the actual 
 Apache2::Request object.
-See L<Apache2::Request> about those gory details.  
+See L<Apache2::Request/SUBCLASSING Apache2::Request>
+about those gory details.  
 
 Whether 
 you call C<< $self->$apache2_request_method >> or 
 C<< $self->{r}->$apache2_request_method >> matters not,
 you still ask the same object, so you might as well use
-C<< $self->... >> to make it look clean.
+C<< $self->$method >> to make it look clean.
 
 But, if you don't want to pollute your namespace of
-potential URI handlers with the Apache2::* family
+potential URI handlers with the Apache2::Request* family
 method namespace, don't use Apache2::Request as a base.
-C<< $self->{r} >> is still an Apache2::Request object.
+C<< $self->{r} >> is still an Apache2::Request object,
+which gets you to all the RequestRec, RequestUtil,
+RequestIO methods etc.
 
 The rest of this manual assumes that you do use
 L<Apache2::Request> as a base in your controller,
@@ -300,7 +325,7 @@ access those methods via C<< $self->{r} >>.
 
 =head1 RETURN VALUES
 
-Your controller methods should use eval { } if necessary and
+Your controller methods should use C<< eval { } >> if necessary and
 act accordingly, set the right things for C<Apache2::RequestRec> 
 and return the right HTTP constant.  See L<Apache2::Const/:http>
 and L<Apache2::Controller::Refcard>.
@@ -316,28 +341,45 @@ appropriate HTTP status code.  You can return HTTP_OK (200) if that
 is what you mean, or it is the default status if you return OK (0).
 
 Or, if you do C<< $self->status( Apache2::Const::HTTP_SOMETHING ) >>
-and then just return, Apache2::Controller will not override the set status.
+and then just C<< return() >>
+or return OK (0), Apache2::Controller will not override the set status.
 
 See L<Apache2::Controller::Refcard> for a list of HTTP return constants
 and corresponding numbers and messages.
 
 =head2 REDIRECTS, ETC.
 
-For external redirects,
-set C<< $self->err_headers_out->add(Location => 'http://foo.bar') >>
-and return C<< $self->status(Apache2::Const::REDIRECT) >>.  
+As an example of return values, take browser redirects.
+There's no need for an abstraction mechanism around redirects
+since you have direct access to the Apache methods.
+
+ package MyApp::Controller::Somewhere;
+ use base qw( Apache2::Controller Apache2::Request );
+ use Apache2::Const -compile => qw( REDIRECT );
+
+ # maybe dispatched from http://myapp.xyz/somewhere/go_elsewhere
+ sub go_elsewhere {
+     my ($self, @path_args) = @_;
+     $self->err_headers_out->add(Location => 'http://foo.bar');
+     return Apache2::Const::REDIRECT;
+ }
 
 Keep in mind that if you use other request phase processors that
 push a C<PerlLogHandler> like 
 L<Apache2::Controller::DBI::Connector> or
 L<Apache2::Controller::Session>, those will still run,
-but normally will not save changes or commit transactions
-if you set or return an http status outside of the HTTP_OK range.
+but for example the session controller won't save the session
+if you set or return an http status higher than the HTTP_OK family
+(HTTP_MULTIPLE_CHOICES (300) or higher.)
 
 You should also not fiddle with the connection by causing
-Apache2 to close it prematurely, else these handlers may not
-run synchronously before another request is received that
-may have depended on their behavior.
+Apache2 to close it prematurely, else the post-response handlers 
+may not run or won't run synchronously before another request 
+is received that may have depended on their behavior.
+(For example, you can't use a C<< PerlCleanupHandler >>
+to do things like that because the request has already closed,
+and it doesn't get processed before taking in the next request,
+even when running in single-process mode.)
 
 =head1 ERRORS
 
@@ -366,11 +408,9 @@ with HTTP status, data dumps, etc.
 
 If your code does break, die or throw an exception, this is 
 caught by Apache2::Controller.  If your controller module implements
-an C<error()> method, for instance by use of the base
-L<Apache2::Controller::Render::Template> which looks in
-template_dir/errors/ for the appropriately named error template,
-then C<$handler->error()> will be called passing the C<< $EVAL_ERROR >>
-or exception as the first argument.
+an C<<error() >> method, 
+then C<< $handler->error() >> will be called passing the C<< $EVAL_ERROR >>
+or exception object as the first argument.
 
  package MyApp::C::Foo;
  use YAML::Syck;
@@ -387,6 +427,12 @@ or exception as the first argument.
      }
  }
 
+For instance 
+L<Apache2::Controller::Render::Template> implements
+C<< error() >> for you, which looks for
+the appropriately named error template as
+F<template_dir/errors/###.html>.
+
 Of course, all exceptions are sent to the error log using
 L<Log::Log4perl> DEBUG() before the handler completes, and
 any refusal status greater or equal to 400 (HTTP_BAD_REQUEST) 
@@ -395,10 +441,7 @@ using the first few characters of the error.
 
 See L<Apache2::Controller::Session/ERRORS> for how to control
 whether or not a session is saved.  Usually it is automatically
-saved.  If you don't want it saved when you have an error
-in your controller, you'll have to use C<<eval>> and then
-set C<<$self->notes->{a2c_connection_aborted}>> before you return
-the error code.
+saved, but not if you have an error.
 
 C<< error() >> does not have to roll back DBI handles if you
 use L<Apache2::Controller::DBI::Connector>, as this is
@@ -513,7 +556,6 @@ use Apache2::RequestRec ();
 use Apache2::RequestIO ();
 use Apache2::RequestUtil ();
 use Apache2::Log;
-use Apache2::Module ();
 use Apache2::Const -compile => qw( :common :http );
 
 =head1 FUNCTIONS
@@ -644,18 +686,16 @@ sub a2c_new {
 
     $self->{r} = $req;  # for Apache2::Request subclass automagic
 
-    my $notes  = $req->notes;
-    my $pnotes = $req->pnotes;
+    my $pnotes_a2c = $req->pnotes->{a2c} || { };
 
-    my $method = $notes->{method};
+    my $method = $pnotes_a2c->{method};
 
     $self->{method}      = $method;
-    $self->{path_args}   = $pnotes->{path_args};
-    $self->{remote_addr} = $notes->{remote_addr};
+    $self->{path_args}   = $pnotes_a2c->{path_args};
 
     # don't instantiate the 'session' key of $self unless it's implemented
     # in some earlier stage of the apache lifecycle.
-    my $session = $pnotes->{session};
+    my $session = $pnotes_a2c->{session};
     if ($session) {
         $self->{session} = $session;
         DEBUG(sub{"found and attached session to controller self:\n".Dump($session)});
@@ -685,8 +725,8 @@ See L<Apache2::Controller::Methods>.
 The handler is pushed from an Apache2::Controller::Dispatch
 subclass and via your dispatched subclass of Apache2::Controller.
 It should not be set in the config file.  It looks
-for the controller module name in C<< $r->notes->{controller} >>
-and for the method name in C<< $r->notes->{method} >>.
+for the controller module name in C<< $r->pnotes->{a2c}{controller} >>
+and for the method name in C<< $r->pnotes->{a2c}{method} >>.
 
 Errors are intercepted and if the handler object was created
 and implements an C<< $handler->error($exception) >> method 
@@ -704,7 +744,9 @@ sub handler : method {
     my ($class, $r) = @_;
     return $class if !defined $r;
 
-    my $method = $r->notes->{method};
+    my $pnotes_a2c = $r->pnotes->{a2c} || { };
+
+    my $method = $pnotes_a2c->{method};
 
     DEBUG("$class -> $method");
 
@@ -715,7 +757,7 @@ sub handler : method {
         $method  = $handler->{method};
 
         DEBUG("executing $class -> $method()");
-        my $args = $r->pnotes->{path_args} || [];
+        my $args = $pnotes_a2c->{path_args} || [];
         $status = $handler->$method(@{$args});
         $status = $r->status() if !defined $status;
 
@@ -726,37 +768,51 @@ sub handler : method {
                     dump    => { controller_set_status => $status };
             }
             elsif ($status < 0) {
-                a2cx "controller must set http status >= 0";
+                a2cx message => "controller must set http status >= 0",
+                    status  => Apache2::Const::SERVER_ERROR,
+                    dump    => { controller_set_status => $status };
             }
         }
-
     };
     if ($X = $EVAL_ERROR) {
         my $ref = ref($X);
 
-        $status 
-          = $ref && blessed($X) && $X->can('status') 
-                             ? ($X->status || Apache2::Const::SERVER_ERROR)
-          : !defined $status                ? Apache2::Const::SERVER_ERROR
-          : !looks_like_number($status)     ? Apache2::Const::SERVER_ERROR
-          : $status == Apache2::Const::OK   ? Apache2::Const::HTTP_OK
-          : Apache2::Const::SERVER_ERROR;
+        my $x_status = $ref && blessed($X) && $X->can('status')
+            ? $X->status : undef;
+
+        my $error_method_status;
 
         # if appropriate and able to call self->error(), do that now
-        if ($handler && !$r->notes->{use_standard_errors}) {
+        if ($handler && !$pnotes_a2c->{use_standard_errors}) {
 
             eval {
                 if (exists $supports_error_method{$class}) {
-                    $handler->error($X);
+                    $error_method_status = $handler->error($X);
                 } 
                 elsif ($class->can('error')) {
-                    $handler->error($X); 
+                    $supports_error_method{$class} = 1;
+                    $error_method_status = $handler->error($X); 
                 }
             };
+
+            # trap unknown errors that might have been thrown
+            # by the error() subroutine
             $X = Exception::Class->caught('Apache2::Controller::X')
                 || $EVAL_ERROR 
                 || $X;
         }
+
+        # status handling is pretty complex at this point
+        my $set_status = $r->status();
+        DEBUG "set status is '$set_status' for error handling";
+
+        $status 
+          = defined $x_status               ? $x_status
+          : defined $error_method_status    ? $error_method_status
+          : defined $set_status             ? $set_status
+          : !defined $status                ? Apache2::Const::SERVER_ERROR
+          : $status == Apache2::Const::OK   ? Apache2::Const::HTTP_OK
+          : Apache2::Const::SERVER_ERROR;
 
         # now decide how to output debugging log:
         if (ref($X) && $X->isa('Apache2::Controller::X')) {
@@ -796,8 +852,6 @@ sub handler : method {
         # log_reason in the access log for why this request was denied.
         # (is this desirable?)
         log_bad_request_reason($r, $X);
-        $r->status_line("$status ".status_message($status)) 
-            if !$r->status_line;
         return $status;
     }
     else {
@@ -950,7 +1004,11 @@ Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 
 =cut

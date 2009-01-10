@@ -1,6 +1,31 @@
 
 Revision history for Apache2-Controller
 
+1.000.011   2009-01-10
+
+            No more setting status_line() with HTTP::Status messages
+            for error conditions - just let Apache set its message.
+            Re-arranged a little bit of error handling so you can
+            set or return a status from error().
+
+            Bugfix for Methods get_cookie_jar - it should not store
+            a reference in pnotes because it contains a ref to the
+            Request.  
+
+            Pushed Session handler now saves a top-level timestamp 
+            to force update of Apache::Session, if you set the
+            directive flag.
+
+            Session save handler is now its own package,
+            concerned about closures keeping the request around.
+            Is this a problem with the DBI rollback handler,
+            which closes on a string var in the setup phase?
+
+            Moved all of the internal notes/pnotes garbage
+            under one structure $r->pnotes->{a2c} because
+            it makes more sense to not clutter the limited
+            notes/pnotes key namespace.
+
 1.000.010   2008-12-2
 
             Detaints directive values. 

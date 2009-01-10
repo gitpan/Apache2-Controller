@@ -7,12 +7,12 @@ Hash tree dispatch for L<Apache2::Controller::Dispatch>
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -247,10 +247,10 @@ sub find_controller {
         for grep !exists $results{$_}, 
         qw( controller method relative_uri );
 
-    # save the info in notes
-    $r->notes->{$_} = $results{$_} for keys %results;
-
-    $r->pnotes->{path_args}         = \@path_args;
+    # save the info in pnotes
+    my $pnotes = $r->pnotes;
+    $pnotes->{a2c}{$_} = $results{$_} for keys %results;
+    $pnotes->{a2c}{path_args} = \@path_args;
 
     # now try finding a matching module in dispatch_map
 
@@ -275,7 +275,11 @@ Mark Hedges, C<hedges +(a t)| scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 

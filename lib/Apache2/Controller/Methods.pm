@@ -6,12 +6,12 @@ Apache2::Controller::Methods - methods shared by Apache2::Controller modules
 
 =head1 VERSION
 
-Version 1.000.010 - FIRST RELEASE
+Version 1.000.011
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.011');
 
 =head1 SYNOPSIS
 
@@ -40,6 +40,7 @@ use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
 
+use Apache2::Module ();
 use Apache2::Controller::X;
 use Apache2::Cookie;
 use YAML::Syck;
@@ -68,7 +69,7 @@ sub get_directives {
 
     my $r = $self->{r};
 
-    my $directives = $r->pnotes->{directives};
+    my $directives = $r->pnotes->{a2c}{directives};
     return $directives if $directives;
 
     $directives = Apache2::Module::get_config(
@@ -79,7 +80,7 @@ sub get_directives {
 
     DEBUG sub{"directives found:\n".Dump($directives)};
 
-    $r->pnotes->{directives} = $directives;
+    $r->pnotes->{a2c}{directives} = $directives;
     return $directives;
 }
 
@@ -112,25 +113,30 @@ sub get_directive {
 
  my $jar = $self->get_cookie_jar();
 
-Fetches cookies with Apache2::Cookie::Jar.  Caches them in 
-C<<$self->pnotes->{cookie_jar}>> for the duration of the request.
-Further calls to get_cookie_jar() from any handler will return the
-same jar without re-parsing them.
+Gets the Apache2::Cookie::Jar object.
+
+Does NOT cache the jar in any way, as this is the business 
+of C<Apache2::Cookie>, and input headers could possibly change
+via filters, and it would create a circular reference to C<< $r >>
+if you stuck it in pnotes.
+
+See L<Apache2::Cookie>.
 
 =cut
 
 sub get_cookie_jar {
     my ($self) = @_;
     my $r = $self->{r};
-    DEBUG(sub {"raw cookie headers: ".($r->headers_in->{Cookie} || '[no cookies]') });
-    DEBUG('searching for cookie_jar in r->pnotes->{cookie_jar}');
-    my $jar = $r->pnotes->{cookie_jar};
-    return $jar if defined $jar;
-    DEBUG('did not find cookie_jar in pnotes');
-    $jar = Apache2::Cookie::Jar->new($r);
-    my @cookie_names = $jar->cookies;
-    DEBUG(sub {"cookie names in jar:\n".Dump(\@cookie_names)});
-    $r->pnotes->{cookie_jar} = $jar;
+    my $jar = Apache2::Cookie::Jar->new($r);
+    DEBUG sub {
+        my @cookie_names = $jar->cookies;
+        return
+            "raw cookie header: "
+            .($r->headers_in->{Cookie} || '[no cookies]')
+            ."\n"
+            ."cookie names in jar:\n"
+            .Dump(\@cookie_names)
+    };
     return $jar;
 }
 
@@ -157,7 +163,11 @@ Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
 Copyright 2008 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
+
+This software is provided as-is, with no warranty 
+and no guarantee of fitness
+for any particular purpose.
 
 =cut
 
