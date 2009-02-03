@@ -2,26 +2,37 @@ package Apache2::Controller;
 
 =head1 NAME
 
-Apache2::Controller - framework for Apache2 handler apps
+Apache2::Controller - fast MVC-style Apache2 handler apps
 
 =head1 VERSION
 
-Version 1.000.011
+Version 1.000.100
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.011');
+our $VERSION = version->new('1.000.100');
+
+=head1 INSTALLATION PRE-REQUISITES
+
+You need mod_perl2, L<Apache::Test> and L<version> installed to 
+build this distribution with CPAN.  
+Otherwise the Makefile.PL will not run
+to tell you that prerequisites failed.  
+This is a drawback of using L<Apache::Test>.
 
 =head1 SYNOPSIS
 
 Your application IS the controller.  A2C gets all the 
 abstractions out from between your controller logic and
 the Apache2 methods to control input/output, status etc.
+You control Apache2 directly, or use a rendering base like 
+L<Apache2::Controller::Render::Template> which gives a method
+to render using L<Template> Toolkit.
 
 For Apache2 config file setup see L<Apache2::Controller::Dispatch>,
 which sets a PerlResponseHandler of Apache::Controller, which
-then instantiates your controller object and calls the chosen
+then creates your controller object and calls the chosen
 method for the uri.
  
  package MyApp::C::Foo;
@@ -34,8 +45,8 @@ method for the uri.
  # Apache2 methods via $self.
 
  use base qw( 
-    Apache2::Controller 
-    Apache2::Request
+     Apache2::Controller 
+     Apache2::Request
  );
 
  use Apache2::Const -compile => qw( :http );
@@ -88,7 +99,9 @@ of HTTP-based API, by returning the appropriate HTTP status codes.
 See L<Apache2::Controller::Refcard/status> for a list.
 
 See L<Apache2::Controller::Render::Template> for an additional base
-for your controller class to render HTML with L<Template> Toolkit.
+for your controller class to render HTML with L<Template> Toolkit,
+auto-selecting a template from the include path based on the 
+request URI.
 
 =head1 DESCRIPTION
 
@@ -162,11 +175,7 @@ even dynamic ones based on context from the request.
 L<Apache2::Controller> is the base module for each controller module. 
 Depending on your dispatch mechanism, controller modules usually 
 contain a list of the method names which 
-are allowed as uri paths under the controller.  Instead of implementing 
-a complex scheme of subroutine attributes, you maintain a list, which 
-also acts as your documentation in one place within the controller. This 
-frees you to structure your controller module as you want to, with 
-whatever other methods you choose to put in there.
+are allowed as uri paths under the controller.
 
 =head1 DISPATCH OF URI TO CONTROLLER
 
@@ -539,12 +548,9 @@ use Readonly;
 use Scalar::Util qw( blessed );
 use Log::Log4perl qw(:easy);
 
-use Template;
 use YAML::Syck;
 use Digest::SHA qw( sha224_base64 );
 use URI;
-use HTML::Entities;
-use URI::Escape;
 use HTTP::Status qw( status_message );
 use Scalar::Util qw( looks_like_number );
 

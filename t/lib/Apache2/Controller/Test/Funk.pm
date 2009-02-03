@@ -13,7 +13,6 @@ package Apache2::Controller::Test::Funk;
 use strict;
 use warnings FATAL => 'all';
 use English '-no_match_vars';
-use IPC::Open3;
 use URI::Escape;
 use Carp qw(croak);
 
@@ -49,6 +48,7 @@ be on Win32 systems, etc.
 =cut
 
 sub od {
+    use IPC::Open3;
     my ($string) = @_;
     my ($wtr, $rdr, $err, $od_out);
     my $pid = open3($wtr, $rdr, $err, 'od -a');

@@ -6,12 +6,12 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
 =head1 VERSION
 
-Version 1.000.011
+Version 1.000.100
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.011');
+our $VERSION = version->new('1.000.100');
 
 =head1 SYNOPSIS
 
@@ -123,8 +123,29 @@ Or by implementing C<<template_options>> in your controller:
 
 =head1 STASH FUNCTIONS
 
-Several subroutine references are automatically included
-in the stash for ease of use.
+We don't assign any stash functions by default.
+If you want to assign consistent stash functions in your controller,
+overload C<< render() >>, assign them, and then call C<< SUPER::render() >>.
+
+ package MyApp::ControllerBase;
+ use base qw( Apache2::Controller Apache2::Controller::Render::Template );
+ use HTML::Entities;
+
+ sub render {
+     my ($self) = @_;
+     $self->{stash}{encode_entities} = \&encode_entities;
+     $self->SUPER::render();
+ }
+
+ package MyApp::Controller::Somewhere;
+ use base qw( MyApp::ControllerBase );
+ # ...
+ sub someuri {
+     my ($self, @path_args) = @_;
+     $self->render();
+     return Apache2::Const::HTTP_OK;
+ }
+
 
 =cut
 
@@ -138,45 +159,15 @@ use Apache2::Controller::X;
 use File::Spec;
 use Template;
 use YAML::Syck;
-use URI::Escape;
-use HTML::Entities;
 use HTTP::Status qw( status_message );
 use Log::Log4perl qw( :easy );
 
-=head2 escape_html
-
-Escape '<' and '>' characters using L<HTML::Entities>.
-
-=cut
-
-sub escape_html {
-    my @strings = @_; # clone, don't modify
-    return map encode_entities($_, '<>'), @strings;
-}
-
-=head2 uri_escape
-
-See L<URI::Escape>.
-
-=head2 Dump
-
-See L<YAML::Syck>.
-
-=cut
-
-sub _assign_tt_functions {
-    my ($self) = @_;
-    $self->{stash}{escape_html} = \&escape_html;
-    $self->{stash}{uri_escape}  = \&uri_escape;
-    $self->{stash}{Dump}        = \&Dump;
-    return;
-}
-
 sub _assign_tt_stash_data {
     my ($self) = @_;
-    $self->{stash}{path_args}   = $self->{path_args};
-    $self->{stash}{method}      = $self->{method};
-    $self->{stash}{controller}  = $self->{class};
+    my $stash = $self->{stash} ||= { };
+    my $stash_a2c = $stash->{a2c} ||= { };
+    my @keys = qw( path_args method controller );
+    @{$stash_a2c}{@keys} = @{$self}{@keys};
     return;
 }
 
@@ -205,7 +196,6 @@ sub render {
 
   # DEBUG(sub { Dump($self->{stash}) });
 
-    $self->_assign_tt_functions();
     $self->_assign_tt_stash_data();
 
     # assimilate output to a scalar 
@@ -252,7 +242,7 @@ sub render_fast {
 
   # DEBUG(sub { Dump($self->{stash}) });
 
-    $self->_assign_tt_functions();
+    $self->_assign_tt_stash_data();
 
     my $tt = $self->get_tt_obj();
     # pass Apache2::Request object to print directly.

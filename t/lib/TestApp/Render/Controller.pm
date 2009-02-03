@@ -5,14 +5,13 @@ use warnings FATAL => 'all';
 use English '-no_match_vars';
 
 use base qw( 
-    Apache2::Controller
-    Apache2::Controller::Render::Template
-    Apache2::Request
+    TestApp::Render::ControllerBase
 );
 
 use Readonly;
 use Apache2::Const -compile => qw(HTTP_OK);
 use Log::Log4perl qw(:easy);
+use YAML::Syck;
 
 sub allowed_methods {qw( default pie process )}
 

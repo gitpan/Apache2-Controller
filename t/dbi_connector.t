@@ -20,14 +20,8 @@ use lib "$FindBin::Bin/lib";
 use Apache2::Controller::Test::Funk;
 use YAML::Syck;
 use URI::Escape;
-use IPC::Open3;
 
 Apache::TestRequest::user_agent(cookie_jar => {});
-
-# create the SQLite database
-
-my $tmp  = File::Spec->tmpdir();
-my $sqlfile = File::Spec->catfile( $tmp, "A2C_Test_DBI_Connector.$$.sqlite" );
 
 my @tests = (
     working                 => 'TestApp::DBI::Controller is working.',
@@ -48,7 +42,7 @@ my $j = -1;
 
 while (exists $tests[$i += 2] && exists $tests[$j += 2]) {
     ( my $content = GET_BODY("/dbi_connector/$tests[$i]") ) =~ s{ \s+ \z }{}mxs;
-    od($content);
+  # od($content);
     ok t_cmp($content => $tests[$j], $tests[$j]);
 } # how do you like them apples, oh evil thread-unsafe natatime() ?
 

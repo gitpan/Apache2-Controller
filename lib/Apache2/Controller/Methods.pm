@@ -6,12 +6,12 @@ Apache2::Controller::Methods - methods shared by Apache2::Controller modules
 
 =head1 VERSION
 
-Version 1.000.011
+Version 1.000.100
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.011');
+our $VERSION = version->new('1.000.100');
 
 =head1 SYNOPSIS
 

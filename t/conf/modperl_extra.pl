@@ -1,7 +1,6 @@
 
 #warn `pwd`;
 #warn "@INC";
-BEGIN {
 
 use strict; 
 use warnings;
@@ -21,10 +20,14 @@ log4perl.appender.Screen.layout.ConversionPattern=------------------------------
 
 Log::Log4perl->init(\$loginit);
 
-use File::Spec;
-my $tmp = File::Spec->tmpdir();
+1;
 
-my $dir = File::Spec->catfile($tmp, 'A2Ctest');
+__END__
+
+use File::Spec;
+my $tmp = $ENV{A2C_TEMPDIR};
+
+my $dir = File::Spec->catfile($tmp, 'A2Csesstest');
 
 do {
   # DEBUG("Creating temp directory $_");

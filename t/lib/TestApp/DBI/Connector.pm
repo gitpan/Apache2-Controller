@@ -12,8 +12,13 @@ use YAML::Syck;
 
 use base qw( Apache2::Controller::DBI::Connector );
 
-my $tmp  = File::Spec->tmpdir();
-my $sqlfile = File::Spec->catfile( $tmp, "A2C_Test_DBI_Connector.$$.sqlite" );
+use File::Temp qw( tempdir );
+
+my $tmpdir = tempdir( CLEANUP => 1 );
+
+my $sqlfile = File::Spec->catfile( 
+    $tmpdir, "A2C_Test_DBI_Connector.sqlite" 
+);
 
 my @dbi_args = ( "dbi:SQLite:dbname=$sqlfile", '', '', {
     RaiseError => 1,

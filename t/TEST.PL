@@ -1,9 +1,9 @@
-#!perl
-  
+
 use strict;
 use warnings FATAL => 'all';
 
 use FindBin;
+use YAML::Syck;
 
 use blib;
 use lib "$FindBin::Bin/lib";

@@ -1,6 +1,27 @@
 
 Revision history for Apache2-Controller
 
+1.000.100   2009-02-02
+
+            Fixed MANIFEST. RT# 42979.
+            https://rt.cpan.org/Ticket/Display.html?id=42979
+
+            Switched to Module::Build to better control prereqs,
+            build prereqs etc.  
+
+            Render::Template doesn't assign stash functions anymore,
+            in order to reduce number of dependencies.  Do this yourself
+            by overloading render().
+
+            Test suite uses File::Temp tempdir now so that temp
+            directories get cleaned up properly.
+
+            No longer tries `od` with open3(), so MS Win might work? 
+
+            A2C stash data is put in sub-hash 'a2c' of stash,
+            so it doesn't clutter the namespace and is consistent
+            with the same change that was made to consolidate pnotes.
+
 1.000.011   2009-01-10
 
             No more setting status_line() with HTTP::Status messages
