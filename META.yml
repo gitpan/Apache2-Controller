@@ -21,67 +21,67 @@ name: Apache2-Controller
 provides:
   Apache2::Controller:
     file: lib/Apache2/Controller.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Auth::OpenID:
     file: lib/Apache2/Controller/Auth/OpenID.pm
-    version: v1.0.10
+    version: v1.0.110
   Apache2::Controller::Const:
     file: lib/Apache2/Controller/Const.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::DBI::Connector:
     file: lib/Apache2/Controller/DBI/Connector.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Directives:
     file: lib/Apache2/Controller/Directives.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Dispatch:
     file: lib/Apache2/Controller/Dispatch.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Dispatch::HashTree:
     file: lib/Apache2/Controller/Dispatch/HashTree.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Dispatch::RenderTemplate:
     file: lib/Apache2/Controller/Dispatch/RenderTemplate.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Dispatch::Simple:
     file: lib/Apache2/Controller/Dispatch/Simple.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Funk:
     file: lib/Apache2/Controller/Funk.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Log::DetectAbortedConnection:
     file: lib/Apache2/Controller/Log/DetectAbortedConnection.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Log::SessionSave:
     file: lib/Apache2/Controller/Log/SessionSave.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Methods:
     file: lib/Apache2/Controller/Methods.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::NonResponseBase:
     file: lib/Apache2/Controller/NonResponseBase.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::NonResponseRequest:
     file: lib/Apache2/Controller/NonResponseRequest.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::PerChildInit:
     file: lib/Apache2/Controller/PerChildInit.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Render::Template:
     file: lib/Apache2/Controller/Render/Template.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::SQL::MySQL:
     file: lib/Apache2/Controller/SQL/MySQL.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Session:
     file: lib/Apache2/Controller/Session.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::Session::Cookie:
     file: lib/Apache2/Controller/Session/Cookie.pm
-    version: v1.0.101
+    version: v1.0.110
   Apache2::Controller::X:
     file: lib/Apache2/Controller/X.pm
-    version: v1.0.101
+    version: v1.0.110
 recommends:
   IPC::Open3: 0
   LWPx::ParanoidAgent: 0
@@ -121,4 +121,4 @@ requires:
   version: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: v1.0.101
+version: v1.0.110

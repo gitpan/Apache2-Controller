@@ -6,12 +6,12 @@ Apache2::Controller::Directives - server config directives for A2C
 
 =head1 VERSION
 
-Version 1.000.101
+Version 1.000.110
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.101');
+our $VERSION = version->new('1.000.110');
 
 =head1 SYNOPSIS
 
@@ -127,6 +127,14 @@ my @directives = (
             A2C_Session_Cookie_Opts   name       myapp_sessionid
             A2C_Session_Cookie_Opts   expires    +3M
         },
+    },
+
+    # A2C:Methods
+    {
+        name            => 'A2C_Skip_Bogus_Cookies',
+        req_override    => Apache2::Const::OR_ALL,
+        args_how        => Apache2::Const::NO_ARGS,
+        errmsg          => 'example: A2C_Skip_Bogus_Cookies',
     },
 
     # A2C:DBI::Connector
@@ -493,6 +501,26 @@ sub A2C_Session_Cookie_Opts {
     my ($self, $parms, $key, $val) = @_;
     $self->hash_assign('A2C_Session_Cookie_Opts', $key, $val);
     return;
+}
+
+=head1 Apache2::Controller::Methods
+
+Misc. directives that apply to most A2C objects that inherit
+L<Apache2::Controller::Methods>.
+
+=head2 A2C_Skip_Bogus_Cookies 
+
+ A2C_Skip_Bogus_Cookies
+
+Takes no arguments.  If present, cookie jar will be constructed
+using C<< eval { } >> that skips NOTOKEN errors.  
+See L<Apache2::Controller::Methods/get_cookie_jar>.
+
+=cut
+
+sub A2C_Skip_Bogus_Cookies {
+    my ($self, $parms) = @_;
+    $self->{A2C_Skip_Bogus_Cookies} = 1;
 }
 
 =head1 Apache2::Controller::DBI::Connector

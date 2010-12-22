@@ -11,7 +11,7 @@ Version 1.000.010 - THIS MODULE DISABLED, DOES NOT WORK.
 =cut
 
 use version;
-our $VERSION = version->new('1.000.010');
+our $VERSION = version->new('1.000.110');
 
 =head1 SYNOPSIS
 

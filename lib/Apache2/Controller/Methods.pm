@@ -6,12 +6,12 @@ Apache2::Controller::Methods - methods shared by Apache2::Controller modules
 
 =head1 VERSION
 
-Version 1.000.101
+Version 1.000.110
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.101');
+our $VERSION = version->new('1.000.110');
 
 =head1 SYNOPSIS
 
@@ -124,19 +124,45 @@ if you stuck it in pnotes.  It always creates a new Jar object,
 which acts as a utility object to parse the source information
 that remains in C<< $r >>, if I understand this correctly.
 
-Runs in eval and returns C<< $EVAL_ERROR->jar >> if the error
+If the directive << A2C_Skip_Bogus_Cookies >> is set, fetches
+jar in eval and returns C<< $EVAL_ERROR->jar >> if the error
 is an L<APR::Request::Error> and the code is C<< APR::Request::Error::NOTOKEN >>,
-indicating a cookie with a value like '1' sent by a defective browser.
+indicating a cookie with a value like '1' sent by a defective client.
 Any other L<APR::Error> will be re-thrown as per that doc, 
 otherwise A2C will throw an L<Apache2::Controller::X> with the error.
 (See L<http://comments.gmane.org/gmane.comp.apache.apreq/4477> - 
-closes RT #61744, thanks Arkadius Litwinczuk.)
+closes RT #61744, thanks Arkadius Litwinczuk.)  Skipping these
+errors is optional since they might be important for debugging 
+clients that send invalid headers.
 
-See L<Apache2::Cookie>.
+See L<Apache2::Cookie>, L<Apache2::Controller::Directives>.
 
 =cut
 
 sub get_cookie_jar {
+    my $self = shift;
+    return $self->get_directive('A2C_Skip_Bogus_Cookies')
+        ? $self->_get_cookie_jar_eval(@_)
+        : $self->_get_cookie_jar_normal(@_)
+        ;
+}
+
+sub _get_cookie_jar_normal {
+    my ($self) = @_;
+    my $r = $self->{r};
+    my $jar;
+    eval { $jar = Apache2::Cookie::Jar->new($r) };
+    if (my $err = $EVAL_ERROR) {
+        my $ref = ref $err;
+        DEBUG "error creating cookie jar (reftype '$ref'): '$err'";
+        die $err if $ref;
+        a2cx "unknown error creating cookie jar: '$err'";
+    }
+    DEBUG $self->_cookie_jar_debug_sub($jar);
+    return $jar;
+}
+
+sub _get_cookie_jar_eval {
     my ($self) = @_;
     my $r = $self->{r};
     my $jar;
@@ -150,29 +176,39 @@ sub get_cookie_jar {
                 my $code = int($err);
                 my $errstr = APR::Error::strerror($code);
                 DEBUG sub { 
-                    my $ip = $r->connection->remote_ip || '[ could not detect remote ip?? ]';
-                    return "bad cookies from ip $ip, skipping error: '$err' ($code/$errstr)";
+                    my $ip = $r->connection->remote_ip 
+                        || '[ could not detect remote ip?? ]';
+                    return "bad cookies from ip $ip, skipping error: '$err'"
+                        ." ($code/$errstr)";
                 };
                 $jar = $err->jar;
             }
             else {
+                DEBUG "rethrowing other APR::Error: '$err'";
                 die $err;
             }
         }
         else {
-            a2cx "unknown error getting cookie jar: '$err'";
+            a2cx "unknown error (reftype '$ref') getting cookie jar: '$err'";
         }
     }
-    DEBUG sub {
-        my @cookie_names = $jar->cookies;
-        return
-            "raw cookie header: "
-            .($r->headers_in->{Cookie} || '[no cookies]')
-            ."\n"
-            ."cookie names in jar:\n"
-            .Dump(\@cookie_names)
-    };
+    DEBUG $self->_cookie_jar_debug_sub($jar);
     return $jar;
+}
+
+# return subref for DEBUG
+sub _cookie_jar_debug_sub {
+    my ($self, $jar) = @_;
+    my $r = $self->{r};
+    my $cookie = $r->headers_in->{Cookie};
+    $cookie = $cookie ? qq{$cookie} : '[no raw cookie string]';
+    my @cookie_names = map qq{$_}, $jar->cookies;
+    return sub {
+        "raw cookie header: $cookie\n"
+        ."cookie names in jar:\n"
+        .join('', map "  - $_\n", @cookie_names)
+        ;
+    };
 }
 
 =head1 SEE ALSO
