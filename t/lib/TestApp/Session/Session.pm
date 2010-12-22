@@ -12,7 +12,7 @@ my $tmpdir = tempdir( CLEANUP => 1 );
 
 do {
     #DEBUG("Creating temp directory $_");
-    mkdir || die "Cannot create $_: $OS_ERROR\n";
+    mkdir $_ || die "Cannot create $_: $OS_ERROR\n";
 } for grep !-d, 
     $tmpdir, 
     map File::Spec->catfile($tmpdir, $_), 

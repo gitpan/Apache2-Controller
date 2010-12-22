@@ -22,27 +22,3 @@ Log::Log4perl->init(\$loginit);
 
 1;
 
-__END__
-
-use File::Spec;
-my $tmp = $ENV{A2C_TEMPDIR};
-
-my $dir = File::Spec->catfile($tmp, 'A2Csesstest');
-
-do {
-  # DEBUG("Creating temp directory $_");
-    mkdir || die "Cannot create $_: $OS_ERROR\n";
-} for grep !-d, 
-    $dir, 
-    map File::Spec->catfile($dir, $_), 
-    qw( lock sess );
-  # zwhoop!  beedododadado!
-
-
-#my $openid_cache = '/tmp/Apache2-Controller.test-cache';
-#mkdir $openid_cache if !-d $openid_cache;
-  # DEBUG(sub {"cookies:".Dump({ map {($_ => "$jar->{$_}")} keys %{$jar} })});
-#chmod(1777, $openid_cache);
- }
-
-1;

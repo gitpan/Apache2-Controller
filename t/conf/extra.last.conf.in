@@ -62,6 +62,10 @@ PerlLoadModule TestApp::DBI::Connector
 # between them explicitly to share the session between locations.
 
 
+PerlLoadModule Apache2::Controller::Auth::OpenID
+PerlLoadModule TestApp::OpenID::Dispatch::Unprotected
+PerlLoadModule TestApp::OpenID::Dispatch::Protected
+
 <Location '/openid/unprotected'>
     SetHandler                  modperl
     PerlInitHandler             TestApp::OpenID::Dispatch::Unprotected

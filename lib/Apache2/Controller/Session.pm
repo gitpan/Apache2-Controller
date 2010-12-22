@@ -6,12 +6,12 @@ Apache2::Controller::Session - Apache2::Controller with Apache::Session
 
 =head1 VERSION
 
-Version 1.000.100
+Version 1.000.101
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.100');
+our $VERSION = version->new('1.000.101');
 
 =head1 SYNOPSIS
 
@@ -365,7 +365,9 @@ sub process {
 
     # we reset the whole PerlLogHandler stack to make sure session
     # gets saved before the database commit happens... lame!
-    push @log_handlers, @{ $r->get_handlers('PerlLogHandler') || [] };
+    push @log_handlers, 
+        grep defined, 
+        @{ $r->get_handlers('PerlLogHandler') || [] };
 
     DEBUG sub {"reordering the PerlLogHandler stack:\n".Dump(\@log_handlers)};
     $r->set_handlers(PerlLogHandler => \@log_handlers);
@@ -439,7 +441,7 @@ sub get_options {
         my $lock = File::Spec->catfile($dir, 'lock');
 
         if (!exists $created_temp_dirs{$hostname}) {
-            do { mkdir || a2cx "Cannot create $_: $OS_ERROR" }
+            do { mkdir $_ || a2cx "Cannot create $_: $OS_ERROR" }
                 for grep !-d, $dir, $sess, $lock;
             $created_temp_dirs{$hostname} = 1;
         }

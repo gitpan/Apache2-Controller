@@ -6,12 +6,12 @@ Apache2::Controller::Methods - methods shared by Apache2::Controller modules
 
 =head1 VERSION
 
-Version 1.000.100
+Version 1.000.101
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.100');
+our $VERSION = version->new('1.000.101');
 
 =head1 SYNOPSIS
 
@@ -43,6 +43,8 @@ use English '-no_match_vars';
 use Apache2::Module ();
 use Apache2::Controller::X;
 use Apache2::Cookie;
+use APR::Error ();
+use APR::Request::Error ();
 use YAML::Syck;
 use Log::Log4perl qw( :easy );
 
@@ -113,12 +115,22 @@ sub get_directive {
 
  my $jar = $self->get_cookie_jar();
 
-Gets the Apache2::Cookie::Jar object.
+Gets the L<Apache2::Cookie::Jar> object.
 
 Does NOT cache the jar in any way, as this is the business 
 of C<Apache2::Cookie>, and input headers could possibly change
 via filters, and it would create a circular reference to C<< $r >>
-if you stuck it in pnotes.
+if you stuck it in pnotes.  It always creates a new Jar object,
+which acts as a utility object to parse the source information
+that remains in C<< $r >>, if I understand this correctly.
+
+Runs in eval and returns C<< $EVAL_ERROR->jar >> if the error
+is an L<APR::Request::Error> and the code is C<< APR::Request::Error::NOTOKEN >>,
+indicating a cookie with a value like '1' sent by a defective browser.
+Any other L<APR::Error> will be re-thrown as per that doc, 
+otherwise A2C will throw an L<Apache2::Controller::X> with the error.
+(See L<http://comments.gmane.org/gmane.comp.apache.apreq/4477> - 
+closes RT #61744, thanks Arkadius Litwinczuk.)
 
 See L<Apache2::Cookie>.
 
@@ -127,7 +139,30 @@ See L<Apache2::Cookie>.
 sub get_cookie_jar {
     my ($self) = @_;
     my $r = $self->{r};
-    my $jar = Apache2::Cookie::Jar->new($r);
+    my $jar;
+    eval { $jar = Apache2::Cookie::Jar->new($r) };
+    if (my $err = $EVAL_ERROR) {
+        my $ref = ref $err;
+        my $is_apr_error = $ref && $ref =~ m{ \A APR:: }mxs;
+        DEBUG "caught error from jar of ref '$ref'";
+        if ($is_apr_error) {
+            if ($err == APR::Request::Error::NOTOKEN) {
+                my $code = int($err);
+                my $errstr = APR::Error::strerror($code);
+                DEBUG sub { 
+                    my $ip = $r->connection->remote_ip || '[ could not detect remote ip?? ]';
+                    return "bad cookies from ip $ip, skipping error: '$err' ($code/$errstr)";
+                };
+                $jar = $err->jar;
+            }
+            else {
+                die $err;
+            }
+        }
+        else {
+            a2cx "unknown error getting cookie jar: '$err'";
+        }
+    }
     DEBUG sub {
         my @cookie_names = $jar->cookies;
         return

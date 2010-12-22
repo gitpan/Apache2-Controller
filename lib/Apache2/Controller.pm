@@ -6,12 +6,12 @@ Apache2::Controller - fast MVC-style Apache2 handler apps
 
 =head1 VERSION
 
-Version 1.000.100
+Version 1.000.101
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.100');
+our $VERSION = version->new('1.000.101');
 
 =head1 INSTALLATION PRE-REQUISITES
 

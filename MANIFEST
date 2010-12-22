@@ -1,6 +1,7 @@
 Build.PL
 Changes
 lib/Apache2/Controller.pm
+lib/Apache2/Controller/Auth/OpenID.pm
 lib/Apache2/Controller/Const.pm
 lib/Apache2/Controller/DBI/Connector.pm
 lib/Apache2/Controller/Directives.pm
@@ -14,13 +15,16 @@ lib/Apache2/Controller/Log/SessionSave.pm
 lib/Apache2/Controller/Methods.pm
 lib/Apache2/Controller/NonResponseBase.pm
 lib/Apache2/Controller/NonResponseRequest.pm
+lib/Apache2/Controller/PerChildInit.pm
 lib/Apache2/Controller/Refcard.pm
 lib/Apache2/Controller/Render/Template.pm
 lib/Apache2/Controller/Session.pm
 lib/Apache2/Controller/Session/Cookie.pm
 lib/Apache2/Controller/SQL/MySQL.pm
 lib/Apache2/Controller/X.pm
+Makefile.PL
 MANIFEST			This list of files
+META.yml
 README.txt
 t/00-load.t
 t/basic.t
@@ -53,6 +57,7 @@ t/lib/TestApp/Session/Controller.pm
 t/lib/TestApp/Session/Dispatch.pm
 t/lib/TestApp/Session/Session.pm
 t/lib/TestApp/Simple/C/Top.pm
+t/openid.t
 t/pod-coverage.t
 t/pod.t
 t/render.t
@@ -64,9 +69,8 @@ t/templates/primary/render/multipath/test.html
 t/templates/primary/render/process.html
 t/templates/primary/render/process/include.html
 t/templates/secondary/multipath.html
+t/TEST
 t/TEST.PL
 t/unit_dispatch_hashtree.t
 t/unit_exception_object.t
 util/apache2_http_response_reference_list.pl
-Makefile.PL
-META.yml

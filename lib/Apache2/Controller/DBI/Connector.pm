@@ -8,16 +8,25 @@ or the key that you select.
 
 =head1 VERSION
 
-Version 1.000.100
+Version 1.000.101
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.100');
+our $VERSION = version->new('1.000.101');
 
 =head1 SYNOPSIS
 
-=head2 CONFIG ALTERNATIVE 1: APACHE CONF
+=head2 USAGE
+
+ sub some_a2c_controller_method {
+     my ($self, @path_args) = @_;
+     my $dbh = $self->pnotes->{a2c}{dbh};
+ }
+
+=head2 CONFIGURATION
+
+=head3 CONFIG ALTERNATIVE 1: APACHE CONF
 
  # virtualhost.conf:
  
@@ -38,10 +47,9 @@ our $VERSION = version->new('1.000.100');
      PerlHeaderParserHandler    Apache2::Controller::DBI::Connector
  </Location>
 
-=head2 CONFIG ALTERNATIVE 2: SUBCLASS 
+=head3 CONFIG ALTERNATIVE 2: SUBCLASS 
 
-If you need to hide details from the server configuration tree,
-for example to hide password from access by untrusted cgi scripts,
+If you need to make your life more complicated,
 subclass this module and implement your own C<<dbi_connect_args()>>
 subroutine, which returns argument list for C<<DBI->connect()>>.
 
@@ -64,6 +72,7 @@ subroutine, which returns argument list for C<<DBI->connect()>>.
      );
  }
  sub dbi_cleanup { 1 }
+ sub dbi_pnotes_name { 'dbh' }
 
  1;
 
@@ -224,8 +233,11 @@ sub process {
     a2cx $EVAL_ERROR if $EVAL_ERROR;
 
     # push the log rollback handler if requested
-    if (0 && $self->dbi_cleanup) {
+    if ($self->dbi_cleanup) {
         # using a closure on '$pnotes_name' ... is this kosher?
+        # maybe this should push a class name of a separate cleanup class,
+        # which calls get_directives()?
+        # or, re-emulate getting the directive name?  argh
         $r->push_handlers(PerlLogHandler => sub {
             my ($r) = @_;
             my $dbh = $r->pnotes->{a2c}{$pnotes_name} || return Apache2::Const::OK;

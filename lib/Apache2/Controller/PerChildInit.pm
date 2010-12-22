@@ -1,9 +1,9 @@
-package Apache2::Controller::NonResponseBase;
+package Apache2::Controller::PerChildInit;
 
 =head1 NAME
 
-Apache2::Controller::NonResponseBase - internal base class for 
-non-response handlers in Apache2::Controller framework
+Apache2::Controller::PerChildInit - 
+C<PerChildInit> handler for child process setup in A2C.
 
 =head1 VERSION
 
@@ -16,16 +16,33 @@ our $VERSION = version->new('1.000.101');
 
 =head1 SYNOPSIS
 
-This is an INTERNAL base class and you don't need to use it.
+ <VirtualHost 127.238.349.450:80>
+     
+     PerlLoadModule      Apache2::Controller::PerChildInit
+     PerChildInitHandler Apache2::Controller::PerChildInit
 
- package Apache2::Controller;
- use base Apache2::Controller::NonResponseBase;
+     <Location /a2c_somewhere>
+         # normal Apache2::Controller::Dispatch setup
+     </Location>
 
- # no need to define handler() or new()
- 
- 1;
+ </VirtualHost>
 
 =head1 DESCRIPTION
+
+This is a SERVER init handler that runs once when an
+Apache2 child process is spawned.  
+
+=head1 INITIALIZATION ITEMS
+
+These are the items initialized once per Apache2 child
+when the C<PerChildInitHandler> runs.
+
+=head2 LOGGING
+
+Replaces the L<Log::Log4perl> appender for loggers
+in the L<Apache2::Controller> namespace with one that
+sends the errors to the Apache2 error log facility
+with the appropriate log level.
 
 This factors out the common parts of handlers in the C<Apache2::Controller>
 framework other than the main response handler.  These non-response
