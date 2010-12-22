@@ -77,11 +77,11 @@ L<Apache2::Controller>,
 
 =head1 AUTHOR
 
-Mark Hedges, C<< <hedges at scriptdolphin.org> >>
+Mark Hedges, C<< <hedges at formdata.biz> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 Mark Hedges, all rights reserved.
+Copyright 2008-2010 Mark Hedges, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

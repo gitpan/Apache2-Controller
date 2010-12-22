@@ -64,7 +64,7 @@ my $build = $build_pkg->new(
     requires            => { map {($_ => 0)} @requires },
     recommends          => { map {($_ => 0)} @recommends },
     create_makefile_pl  => 'passthrough',
-    dist_author         => 'Mark Hedges <hedges@scriptdolphin.org>',
+    dist_author         => 'Mark Hedges <hedges@formdata.biz>',
     dist_version_from   => 'lib/Apache2/Controller.pm',
     add_to_cleanup      => [qw( t/TEST )],
 );

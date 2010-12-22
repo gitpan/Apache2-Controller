@@ -1003,11 +1003,11 @@ Wow!  This stuff is so cool!
 
 =head1 AUTHOR
 
-Mark Hedges, C<hedges +(a t)- scriptdolphin.org>
+Mark Hedges, C<hedges +(a t)- formdata.biz>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2008 Mark Hedges.  CPAN: markle
+Copyright 2008-2010 Mark Hedges.  CPAN: markle
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

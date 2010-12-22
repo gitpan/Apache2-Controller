@@ -6,7 +6,7 @@ Apache2::Controller::Auth::OpenID - OpenID for Apache2::Controller
 
 =head1 VERSION
 
-Version 1.000.010 - THIS MODULE DISABLED, DOES NOT WORK.
+Version 1.000.110 - THIS MODULE DISABLED, DOES NOT WORK.
 
 =cut
 
@@ -913,11 +913,11 @@ L<Net::OpenID::Consumer>
 
 =head1 AUTHOR
 
-Mark Hedges, C<< <hedges at scriptdolphin.org> >>
+Mark Hedges, C<< <hedges at formdata.biz> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 Mark Hedges, all rights reserved.
+Copyright 2008-2010 Mark Hedges, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

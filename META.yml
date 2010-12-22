@@ -1,7 +1,7 @@
 ---
 abstract: 'fast MVC-style Apache2 handler apps'
 author:
-  - 'Mark Hedges <hedges@scriptdolphin.org>'
+  - 'Mark Hedges <hedges@formdata.biz>'
 build_requires:
   Apache::Test: 1.12
   Apache::TestMM: 0
