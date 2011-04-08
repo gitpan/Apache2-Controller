@@ -40,6 +40,8 @@ my @build_requires = qw(
     Apache::TestUtil
     Math::BigInt::GMP
     URI::Escape
+    LWP
+    HTTP::Cookies
 );
 
 my @recommends = qw(

@@ -6,12 +6,12 @@ Apache2::Controller::Session - Apache2::Controller with Apache::Session
 
 =head1 VERSION
 
-Version 1.000.110
+Version 1.000.111
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.110');
+our $VERSION = version->new('1.000.111');
 
 =head1 SYNOPSIS
 
@@ -343,9 +343,10 @@ sub process {
 
     # set the session id in the tracker, however that works
     $session_id ||= $tied_session{_session_id};
-    DEBUG sub {
-        "session_id is ".(defined $session_id ? "'$session_id'" : '[undef]') 
-    };
+    DEBUG "session_id is '$session_id'";
+
+    # put the session id value in pnotes
+    $r->pnotes->{a2c}{session_id} = $session_id; 
 
     $self->set_session_id($session_id);
 

@@ -8,12 +8,12 @@ or the key that you select.
 
 =head1 VERSION
 
-Version 1.000.110
+Version 1.000.111
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.110');
+our $VERSION = version->new('1.000.111');
 
 =head1 SYNOPSIS
 

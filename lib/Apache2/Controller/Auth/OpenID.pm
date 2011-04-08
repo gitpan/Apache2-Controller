@@ -6,12 +6,12 @@ Apache2::Controller::Auth::OpenID - OpenID for Apache2::Controller
 
 =head1 VERSION
 
-Version 1.000.110 - THIS MODULE DISABLED, DOES NOT WORK.
+Version 1.000.111 - THIS MODULE DISABLED, DOES NOT WORK.
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.110');
+our $VERSION = version->new('1.000.111');
 
 =head1 SYNOPSIS
 

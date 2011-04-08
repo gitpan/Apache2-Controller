@@ -6,12 +6,12 @@ Apache2::Controller::Session::Cookie - track a sessionid with a cookie in A2C
 
 =head1 VERSION
 
-Version 1.000.110
+Version 1.000.111
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.110');
+our $VERSION = version->new('1.000.111');
 
 =head1 SYNOPSIS
 
@@ -71,6 +71,13 @@ Get the session id from the cookie and verifies it.
 
 Sets C<< $r->pnotes->{a2c}{session_id} >> to be the session id string.
 
+See L<Apache2::Controller::Methods/get_cookie_jar>
+and L<Apache2::Controller::Directives/A2C_Skip_Bogus_Cookies>.
+
+If the cookie is not present or invalid, returns undef.
+
+Warns the debug log if sig validation fails and returns undef.
+
 =cut
 
 sub get_session_id {
@@ -80,35 +87,42 @@ sub get_session_id {
     $copts{name} ||= $DEFAULT_COOKIE_NAME;
     my $cookie_name = $copts{name};
     
-    my $jar = $self->get_cookie_jar();
+    my $jar = $self->get_cookie_jar();  # result might be undef
+    my ($sid, $valid_sig, $cookie) = ();
+    my $sig = qq{};
 
-    DEBUG "looking for cookie name '$cookie_name'";
-    my $cookie = $jar->cookies($cookie_name);
+    if (defined $jar) {
+        DEBUG "looking for cookie name '$cookie_name'";
+        $cookie = $jar->cookies($cookie_name);
 
-    DEBUG $cookie ? "found cookie!" : "did not find cookie.";
-
-    my ($sid, $sig) = $cookie ? $cookie->value : ();
-
-    return if !defined $sid || !defined $sig;
-
-    DEBUG sub { Dump({
-        sid_from_cookie => $sid,
-        sig_from_cookie => $sig,
-    }) };
-
-    # if the session_id does not pass signature, return nothing
-    my $valid_sig = $self->signature($sid);
-
-    if ($valid_sig ne $sig) {
-        WARN "signature validation failed";
-        return;
+        if ($cookie) {
+            DEBUG "found cookie named '$cookie_name'";
+            my ($read_sid, $read_sig) = $cookie->value();
+            $sid = $read_sid;
+            $sig = $read_sig if defined $read_sig;
+        }
+        else {
+            DEBUG "found no valid cookie named '$cookie_name'";
+        }
+        DEBUG sub { Dump({
+            sid_from_cookie => $sid,
+            sig_from_cookie => $sig,
+        }) };
     }
 
-    my $r = $self->{r};
-    $r->pnotes->{a2c}{session_id} = $sid || '';
+    if (defined $sid) {
+        # if the session_id does not pass signature, return nothing
+        $valid_sig = $self->signature($sid);
 
+        if ($valid_sig ne $sig) {
+            WARN "signature validation failed";
+            return;
+        }
+    }
+
+    # save sig and Apache2::Cookie object for this handler stage
+    # (do not need to recompute the signature since we will use this one)
     $self->{session_valid_sig} = $valid_sig;
-    $self->{session_cookie} = $cookie;
     
     return $sid;
 }
@@ -128,21 +142,21 @@ sub set_session_id {
 
     my $directives = $self->get_directives();
 
-    my %copts = %{ $self->get_directive('A2C_Session_Cookie_Opts') || { } }; 
-    $copts{name} ||= $DEFAULT_COOKIE_NAME;
+    my %opts = %{ $self->get_directive('A2C_Session_Cookie_Opts') || { } }; 
+    $opts{name} ||= $DEFAULT_COOKIE_NAME;
 
-    DEBUG(sub {"Creating session cookie with opts:\n".Dump(\%copts)});
-    my $name = delete $copts{name};
+    DEBUG(sub {"Creating session cookie with opts:\n".Dump(\%opts)});
+    my $name = delete $opts{name};
 
-    my $cookie = $self->{session_cookie} || Apache2::Cookie->new( $r,
+    my $cookie = Apache2::Cookie->new( $r,
         -name           => $name,
         -value          => [ 
             $session_id, 
-            ( $self->{valid_sig} || $self->signature($session_id) )
+            ( $self->{session_valid_sig} || $self->signature($session_id) )
         ],
     );
 
-    $cookie->$_($copts{$_}) for keys %copts;
+    $cookie->$_($opts{$_}) for keys %opts;
 
     DEBUG("baking cookie '$cookie'");
     $cookie->bake($r);

@@ -1,7 +1,7 @@
 
 Revision history for Apache2-Controller
 
-1.000.110   2010-12-21
+1.000.111   2010-12-21
 
             bad cookie eval only if directive A2C_Skip_Bogus_Cookies.
 

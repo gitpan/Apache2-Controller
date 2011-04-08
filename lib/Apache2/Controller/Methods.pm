@@ -6,12 +6,12 @@ Apache2::Controller::Methods - methods shared by Apache2::Controller modules
 
 =head1 VERSION
 
-Version 1.000.110
+Version 1.000.111
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.110');
+our $VERSION = version->new('1.000.111');
 
 =head1 SYNOPSIS
 
@@ -155,10 +155,21 @@ sub _get_cookie_jar_normal {
     if (my $err = $EVAL_ERROR) {
         my $ref = ref $err;
         DEBUG "error creating cookie jar (reftype '$ref'): '$err'";
-        die $err if $ref;
+        die $err if $ref; # rethrow blessed APR::Error errors
         a2cx "unknown error creating cookie jar: '$err'";
     }
-    DEBUG $self->_cookie_jar_debug_sub($jar);
+    DEBUG sub {
+        my $cookie = $r->headers_in->{Cookie};
+        $cookie = $cookie ? qq{$cookie} : '[no raw cookie string]';
+        eval { my @cookies = $jar->cookies() };
+        a2cx "error getting cookie from jar that worked: '$EVAL_ERROR'"
+            if $EVAL_ERROR;
+        return 
+            "raw cookie header: $cookie\n"
+            ."cookie names in jar:\n"
+            .join('', map qq{ - $_\n}, $jar->cookies() )
+            ;
+    };
     return $jar;
 }
 
@@ -169,7 +180,7 @@ sub _get_cookie_jar_eval {
     eval { $jar = Apache2::Cookie::Jar->new($r) };
     if (my $err = $EVAL_ERROR) {
         my $ref = ref $err;
-        my $is_apr_error = $ref && $ref =~ m{ \A APR:: }mxs;
+        my $is_apr_error = length($ref) >= 5 && substr($ref,0,5) eq 'APR::';
         DEBUG "caught error from jar of ref '$ref'";
         if ($is_apr_error) {
             if ($err == APR::Request::Error::NOTOKEN) {
@@ -192,23 +203,19 @@ sub _get_cookie_jar_eval {
             a2cx "unknown error (reftype '$ref') getting cookie jar: '$err'";
         }
     }
-    DEBUG $self->_cookie_jar_debug_sub($jar);
-    return $jar;
-}
-
-# return subref for DEBUG
-sub _cookie_jar_debug_sub {
-    my ($self, $jar) = @_;
-    my $r = $self->{r};
-    my $cookie = $r->headers_in->{Cookie};
-    $cookie = $cookie ? qq{$cookie} : '[no raw cookie string]';
-    my @cookie_names = map qq{$_}, $jar->cookies;
-    return sub {
-        "raw cookie header: $cookie\n"
-        ."cookie names in jar:\n"
-        .join('', map "  - $_\n", @cookie_names)
-        ;
+    DEBUG sub {
+        my $cookie = $r->headers_in->{Cookie};
+        $cookie = $cookie ? qq{$cookie} : '[no raw cookie string]';
+        my @cookie_names;
+        eval { @cookie_names = map qq{$_}, $jar->cookies };
+        return "eval error reading cookie names: $EVAL_ERROR" if $EVAL_ERROR;
+        return 
+            "raw cookie header: $cookie\n"
+            ."cookie names in jar:\n"
+            .join('', map "  - $_\n", @cookie_names)
+            ;
     };
+    return $jar;
 }
 
 =head1 SEE ALSO
