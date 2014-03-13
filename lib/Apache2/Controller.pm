@@ -6,12 +6,12 @@ Apache2::Controller - fast MVC-style Apache2 handler apps
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 INSTALLATION PRE-REQUISITES
 
@@ -756,7 +756,7 @@ sub handler : method {
 
     DEBUG("$class -> $method");
 
-    my ($handler, $status, $X) = ( );
+    my ($handler, $status, $X, $used_error_method_successfully) = ( );
     eval {
 
         $handler = $class->a2c_new($r);
@@ -781,10 +781,9 @@ sub handler : method {
         }
     };
     if ($X = $EVAL_ERROR) {
-        my $ref = ref($X);
 
-        my $x_status = $ref && blessed($X) && $X->can('status')
-            ? $X->status : undef;
+        my $ref = ref($X);
+        my $blessed = $ref && blessed($X);
 
         my $error_method_status;
 
@@ -799,6 +798,7 @@ sub handler : method {
                     $supports_error_method{$class} = 1;
                     $error_method_status = $handler->error($X); 
                 }
+                $used_error_method_successfully = 1;
             };
 
             # trap unknown errors that might have been thrown
@@ -808,23 +808,24 @@ sub handler : method {
                 || $X;
         }
 
-        # status handling is pretty complex at this point
-        my $set_status = $r->status();
-        DEBUG "set status is '$set_status' for error handling";
+        my $x_status = $ref && $blessed && $X->can('status')
+            ? $X->status : undef;
 
         $status 
           = defined $x_status               ? $x_status
           : defined $error_method_status    ? $error_method_status
-          : defined $set_status             ? $set_status
           : !defined $status                ? Apache2::Const::SERVER_ERROR
           : $status == Apache2::Const::OK   ? Apache2::Const::HTTP_OK
-          : Apache2::Const::SERVER_ERROR;
+          : Apache2::Const::SERVER_ERROR
+          ;
 
-        # now decide how to output debugging log:
-        if (ref($X) && $X->isa('Apache2::Controller::X')) {
-            WARN(sub {
-                ref($X).": $X\n".($X->dump ? Dump($X->dump) : '').$X->trace()
-            });
+        WARN "Exception processing status: $status";
+
+        if ($ref && $blessed) {
+            WARN sub { "dump:\n"    .Dump($X->dump)     } if $X->can('dump');
+            WARN sub { "data:\n"    .Dump($X->data)     } if $X->can('data');
+            WARN sub { "trace:\n"   .Dump($X->trace)    } if $X->can('trace');
+            WARN "$X";
         }
         else {
             WARN("Caught an unknown error: $X");
@@ -850,15 +851,23 @@ sub handler : method {
         "status: $debugstatus ($smsg); status_line='$sline'";
     });
 
-    if (!defined $status) {
-        return Apache2::Const::OK;
-    }
-    elsif ($status >= Apache2::Const::HTTP_BAD_REQUEST) {
+    if (defined $status && $status >= Apache2::Const::HTTP_BAD_REQUEST) {
         # if status is an error, file error (possibly truncated) as a 
         # log_reason in the access log for why this request was denied.
         # (is this desirable?)
         log_bad_request_reason($r, $X);
-        return $status;
+    }
+
+    if (!defined $status) {
+        return Apache2::Const::OK;
+    }
+    elsif ($used_error_method_successfully) {
+        # if used a supplied error() method, stop the phase 
+        # so Apache doesn't append its standard error messages
+        # over whatever the controller already wrote.
+        # unless there is a way to detect whether output has been written?
+        # get the position of the output handle maybe?
+        return Apache2::Const::DONE;
     }
     else {
         return $status == Apache2::Const::HTTP_OK

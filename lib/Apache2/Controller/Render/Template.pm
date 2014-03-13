@@ -6,12 +6,12 @@ Apache2::Controller::Render::Template - A2C render() with Template Toolkit
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 SYNOPSIS
 
@@ -200,7 +200,23 @@ sub render {
 
     # assimilate output to a scalar 
     my $output;
-    $tt->process($template, $self->{stash}, \$output) || a2cx $tt->error();
+    my $ok = $tt->process($template, $self->{stash}, \$output);
+
+    if (!$ok) {
+        my $tt_err = $tt->error();
+
+        my ($type, $info) = $tt_err->type_info;  # see Template::Exception
+        my $status_code
+            = $type eq 'file' && $info =~ m{ not \s+ found }mxs
+            ? Apache2::Const::NOT_FOUND
+            : Apache2::Const::SERVER_ERROR
+            ;
+
+        a2cx message    => "$type error - $info",
+            status      => $status_code,
+            status_line => "$status_code $type error - $info",
+            ;
+    }
 
     $self->print($output);
 
@@ -305,7 +321,7 @@ sub error {
         DEBUG("got status from \$X: ".($status || '[none]'));
     }
     $status ||= Apache2::Const::SERVER_ERROR;
-    $status_line ||= status_message($status);
+    $status_line ||= $status.' '.status_message($status);
 
     my $status_file = $status;
     DEBUG("status msg for $status_file: '$status_line'");
@@ -316,6 +332,9 @@ sub error {
 
     my $template_dir = $self->get_directive('A2C_Render_Template_Path')
         || a2cx 'A2C_Render_Template_Path not defined.';
+
+    DEBUG sub { "A2C_Render_Template_Path:\n".Dump($template_dir) };
+
     if (exists $error_templates{$template_dir}{$status_file}) {
 
         my $template = $error_templates{$template_dir}{$status_file};
@@ -350,6 +369,7 @@ sub error {
 
             # and if error template doesn't work, throw back original error
             if ($EVAL_ERROR) {
+                DEBUG "Error rendering error file: $EVAL_ERROR";
                 $try_errors{$self->{template}} = "$EVAL_ERROR";
                 $error_templates{$template_dir}{$status_file} = undef;
                 if (ref $X && $X->isa('Apache2::Controller::X')) {
@@ -429,7 +449,15 @@ sub detect_template {
         return $self->{template};
     }
 
+    (my $rel_uri = ($self->pnotes->{a2c}{relative_uri} || '') ) =~ s{ \A / }{}mxs;
     my $loc = $self->location();
+    my $file = "$self->{method}.html";
+
+    DEBUG(sub{ "before detect_template() changes:\n".Dump({
+        loc         => $loc,
+        rel_uri     => $rel_uri,
+        file        => $file,
+    })});
 
     # trim leading and trailing /'s
     $loc = '' if $loc eq '/';
@@ -438,24 +466,17 @@ sub detect_template {
         substr($loc, -1, 1, '') if substr($loc, -1) eq '/';
     }
 
-    (my $rel_uri = ($self->pnotes->{a2c}{relative_uri} || '') ) =~ s{ \A / }{}mxs;
+    my @file_spec_parts = grep {($_)} $loc, $rel_uri, $file;
+    my $template = File::Spec->catfile(@file_spec_parts);
 
-    my $file = "$self->{method}.html";
-
-    DEBUG(sub{Dump({
+    DEBUG(sub{ "after detect_template() changes:\n".Dump({
         loc         => $loc,
         rel_uri     => $rel_uri,
         file        => $file,
+        template    => $template,
     })});
 
-    my $template 
-        = $rel_uri
-        ? File::Spec->catfile( $loc, $rel_uri, $file )
-        : File::Spec->catfile( $loc, $file );
-
     a2cx "bad template path $_" if $template =~ m{ \.\. / }mxs;
-
-    DEBUG("Detected self->{template} to be '$template'");
 
     $self->{template} = $template;
     return $template;

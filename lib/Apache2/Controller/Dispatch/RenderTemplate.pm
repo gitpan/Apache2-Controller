@@ -7,12 +7,12 @@ dispatch to controllers mapped by files in primary A2C_Render_Template_Path.
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 SYNOPSIS
 

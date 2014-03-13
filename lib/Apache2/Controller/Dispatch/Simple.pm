@@ -6,12 +6,12 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 SYNOPSIS
 
@@ -112,7 +112,9 @@ sub find_controller {
 
     # figure out what most-specific path matches this URI.
     my $r = $self->{r};
+
     my $location = $r->location();
+
     my $uri = $r->uri();
     DEBUG(sub{Dump({
         uri             => $uri,
@@ -169,9 +171,14 @@ sub find_controller {
                 my $first_arg;
                 ($first_arg, @path_args) = split '/', $rest_of_uri;
 
-                DEBUG("rest_of_uri '$rest_of_uri'");
-                DEBUG("first_arg '$first_arg'");
-                DEBUG(sub {Dump(\@path_args)});
+                DEBUG sub { Dump({
+                    rest_of_uri     => $rest_of_uri,
+                    first_arg       => defined $first_arg 
+                                    ?   "'$first_arg'" 
+                                    :   '[undef]'
+                                    ,
+                    path_args       => \@path_args,
+                }) };
 
                 # if the first field in the rest of the uri is a valid method,
                 # assume that is the thing to use.
@@ -214,7 +221,7 @@ sub find_controller {
     a2cx "No controller module found." if !$controller;
 
     $method       ||= 'default';
-    $relative_uri ||= '';
+    $relative_uri ||= $uri;
 
     check_allowed_method($controller, $method);
 

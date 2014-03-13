@@ -6,12 +6,12 @@ Apache2::Controller::Directives - server config directives for A2C
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 SYNOPSIS
 
@@ -377,8 +377,8 @@ sub A2C_Render_Template_Path {
     croak("A2C_Render_Template_Path '$_' does not exist or is not readable.") 
         for grep !( -d $_ && -r _ ), @directories;
 
-    my $current = $self->{A2C_Render_Template_Path} || [ ];
-  # DEBUG("pushing (@directories) to (@{$current})");
+    my $current = $self->{A2C_Render_Template_Path} ||= [ ];
+    DEBUG sub { "pushing (@directories) to (@{$current})" };
 
     push @{ $self->{A2C_Render_Template_Path} }, @directories;
 }

@@ -1,6 +1,32 @@
 
 Revision history for Apache2-Controller
 
+1.001.000   2012-07-??
+
+            Net::OpenID::Consumer & ::Server required to build in 5.12,
+            even though the OpenID module doesn't work yet.  I really 
+            need to get to figuring that out, but I don't have a use case.
+
+            A2C_Render_Template_Path directive needed assignment of
+            empty arrayref if not specified but used somewhere.
+
+            Dispatch::Simple assigns the requested uri if no matching
+            uri found, to kick back up to "not found" Apache errors.
+
+            Logging a bad request shouldn't limit reason length (as much).
+            It will get cut off anyway by whatever it sends it to,
+            however Apache logging is configured.
+
+            Render::Template now handles error status codes correctly,
+            returning DONE in the case an error occured and an error
+            template was used, so Apache doesn't try to append its own 
+            html error messages to the finished html output.
+
+            Session factored tying and will now generate a new cookie
+            and session if the session store object referenced by the old 
+            cookie is no longer present.
+
+
 1.000.111   2010-12-21
 
             bad cookie eval only if directive A2C_Skip_Bogus_Cookies.

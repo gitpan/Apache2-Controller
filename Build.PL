@@ -24,6 +24,8 @@ my @requires = qw(
     List::MoreUtils
     Log::Dispatch
     Log::Log4perl
+    Net::OpenID::Consumer
+    Net::OpenID::Server
     Readonly
     Scalar::Util
     Template
@@ -45,8 +47,6 @@ my @build_requires = qw(
 );
 
 my @recommends = qw(
-    Net::OpenID::Consumer
-    Net::OpenID::Server
     LWPx::ParanoidAgent
     IPC::Open3
 );

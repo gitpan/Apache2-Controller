@@ -6,12 +6,12 @@ Apache2::Controller::Funk
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 SYNOPSIS
 
@@ -41,7 +41,7 @@ use YAML::Syck;
 use Apache2::Controller::X;
 use Apache2::Const -compile => qw( NOT_FOUND );
 
-use UNIVERSAL qw( isa );
+#use UNIVERSAL qw( isa );
 
 our @EXPORT_OK = qw(
     controller_allows_method
@@ -50,7 +50,9 @@ our @EXPORT_OK = qw(
     default_consumer_secret
 );
 
-Readonly my $ACCESS_LOG_REASON_LENGTH => 60;
+# this was dumb... this should really be a directive.
+# or it should let whatever pipe downstream do whatever it needs to.
+Readonly my $ACCESS_LOG_REASON_LENGTH => 512;
 
 =head1 IMPORTABLE FUNCTIONS
 

@@ -6,12 +6,12 @@ Apache2::Controller::Session - Apache2::Controller with Apache::Session
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 SYNOPSIS
 
@@ -326,20 +326,12 @@ sub process {
 
     my %tied_session = ();
     my $tieobj = undef;
-    eval { 
-        tie %tied_session, $class, $session_id, $options;
-        DEBUG 'Finished tie.';
-        $tieobj = tied(%tied_session);
-        DEBUG sub {
-            'Session is '.($tieobj ? 'tied' : 'not tied').", contents:"
-            .Dump(\%tied_session);
-        };
-    };
-    a2cx $EVAL_ERROR     if $EVAL_ERROR;
-    a2cx "no session_id" if !$tied_session{_session_id};
-    a2cx "no tied obj"   if !defined $tieobj;
-    a2cx "session_id mismatch" 
-        if defined $session_id && $session_id ne $tied_session{_session_id};
+    ($session_id, $tieobj) = $self->tie_session(
+        \%tied_session,
+        $class,
+        $session_id,
+        $options,
+    );
 
     # set the session id in the tracker, however that works
     $session_id ||= $tied_session{_session_id};
@@ -375,6 +367,59 @@ sub process {
 
     DEBUG "returning OK";
     return Apache2::Const::OK;
+}
+
+=head2 tie_session
+
+Separate tying the session so it can be called again to set a new cookie
+if the existing cookie is not found in the data store.  Is this a good
+idea?  Not sure.  Does it expose to being able to create infinite sessions?
+Somehow a non-existent session has to be able to be cleared.  This issue
+cropped up when I put a `find -atime` in cron to clear out old session
+files when using Apache::Session::File in /dev/shm.  (Or when rebooting.)
+We can't ask the user to clear their cookies every time this happens.
+So, if tying fails saying "Object does not exist in the data store" 
+then it tries again with an undefined session id.  Returns session id.
+
+=cut
+
+sub tie_session {
+    my ($self, $tied_session, $class, $session_id, $options, $recursion) = @_;
+    $recursion ||= 0;
+    $recursion++;
+    a2cx "Recursion limit exceeded" if $recursion > 5;
+
+    my $tieobj = undef;
+
+    eval {
+        tie %{$tied_session}, $class, $session_id, $options;
+        DEBUG 'Finished tie.';
+        $tieobj = tied(%{$tied_session});
+        DEBUG sub {
+            'Session is '.($tieobj ? 'tied' : 'not tied').", contents:"
+            .Dump($tied_session);
+        };
+    };
+    if (my $err = $EVAL_ERROR) {
+        if ($err =~ /Object does not exist in the data store/) {
+            ($session_id, $tieobj) = $self->tie_session(
+                $tied_session,
+                $class,
+                undef,
+                $options,
+            );
+        }
+        else {
+            a2cx $err;
+        }
+    }
+
+    a2cx "no session_id" if !$tied_session->{_session_id};
+    a2cx "no tied obj"   if !defined $tieobj;
+    a2cx "session_id mismatch" 
+        if defined $session_id && $session_id ne $tied_session->{_session_id};
+
+    return ($session_id, $tieobj);
 }
 
 =head2 signature

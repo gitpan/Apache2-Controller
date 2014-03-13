@@ -6,12 +6,12 @@ Apache2::Controller::Session::Cookie - track a sessionid with a cookie in A2C
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 SYNOPSIS
 

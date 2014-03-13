@@ -9,12 +9,12 @@ helper handler for detecting cancelled connections to the client.
 
 =head1 VERSION
 
-Version 1.000.111
+Version 1.001.000
 
 =cut
 
 use version;
-our $VERSION = version->new('1.000.111');
+our $VERSION = version->new('1.001.000');
 
 =head1 DESCRIPTION
 
