@@ -1,15 +1,13 @@
 Apache2-Controller
 
-The README is used to introduce the module and provide instructions on
-how to install the module, any machine dependencies it may have (for
-example C compilers and installed libraries) and any other information
-that should be provided before the module is installed.
+fast MVC-style Apache2 mod_perl2 handler app framework
 
-A README file is required for CPAN modules since CPAN extracts the README
-file from a module distribution so that people browsing the archive
-can use it to get an idea of the module's uses. It is usually a good idea
-to provide version information here so that people can decide whether
-fixes for the module are worth downloading.
+Apache2::Controller organizes subclassed Apache2::Request handler objects in
+an MVC module structure. A YAML file maps url paths to modules. $self is $r,
+the subclassed XS APR bindings with libapreq methods to load query string,
+etc. Stream with $r->print or use a parallel web tree of Template::Toolkit
+files. Hook in any model class like DBIx::Class or direct SQL or sockets,
+connections cached across requests. Session cookie plugin. Other great stuff.
 
 
 INSTALLATION
@@ -30,6 +28,9 @@ perldoc command.
 
 You can also look for information at:
 
+    GitHub
+        https://github.com/a2c-perl/libapache2-controller-perl
+
     RT, CPAN's request tracker
         http://rt.cpan.org/NoAuth/Bugs.html?Dist=Apache2-Controller
 
@@ -45,7 +46,7 @@ You can also look for information at:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2008 Mark Hedges
+Copyright (C) 2014 Mark Hedges http://www.linkedin.com/in/hedges333
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -25,7 +25,6 @@ my @requires = qw(
     Log::Dispatch
     Log::Log4perl
     Net::OpenID::Consumer
-    Net::OpenID::Server
     Readonly
     Scalar::Util
     Template
@@ -40,6 +39,8 @@ my @build_requires = qw(
     Apache::TestRequest
     Apache::TestRunPerl
     Apache::TestUtil
+    Net::OpenID::Server
+    HTTP::Server::Simple::CGI
     Math::BigInt::GMP
     URI::Escape
     LWP

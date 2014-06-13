@@ -15,6 +15,7 @@ plan tests => 5;
 
 my $url = "/render";
 
+diag("GET_BODY $url");
 my $data = GET_BODY $url;
 
 ok t_cmp($data, "Top level handler.\n", "render test: top level handler");

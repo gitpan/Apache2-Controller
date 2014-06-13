@@ -6,12 +6,12 @@ Apache2::Controller::Funk
 
 =head1 VERSION
 
-Version 1.001.000
+Version 1.001.001
 
 =cut
 
 use version;
-our $VERSION = version->new('1.001.000');
+our $VERSION = version->new('1.001.001');
 
 =head1 SYNOPSIS
 
@@ -40,8 +40,6 @@ use YAML::Syck;
 
 use Apache2::Controller::X;
 use Apache2::Const -compile => qw( NOT_FOUND );
-
-#use UNIVERSAL qw( isa );
 
 our @EXPORT_OK = qw(
     controller_allows_method

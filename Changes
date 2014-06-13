@@ -1,6 +1,22 @@
 
 Revision history for Apache2-Controller
 
+1.001.001   2014-06-11
+
+            Was the UNIVERSAL bug fixed in the last version?  It looked 
+            that way.
+
+            Corrected some POD errors.
+
+            t/render.t was failing because I had set the relative_uri
+            with the uri if there was no relative_uri.  That didn't
+            make sense, it resulted in a url /foo/default/default.html.
+            All the other tests seem to pass still.  I don't know why
+            I introduced that bug or why it appeared at the time
+            that the test worked with that regression.
+
+            Look for A2C in Debian!
+
 1.001.000   2012-07-??
 
             Net::OpenID::Consumer & ::Server required to build in 5.12,

@@ -6,12 +6,12 @@ Apache2::Controller::Dispatch::Simple - simple dispatch mechanism for A2C
 
 =head1 VERSION
 
-Version 1.001.000
+Version 1.001.001
 
 =cut
 
 use version;
-our $VERSION = version->new('1.001.000');
+our $VERSION = version->new('1.001.001');
 
 =head1 SYNOPSIS
 
@@ -220,8 +220,11 @@ sub find_controller {
 
     a2cx "No controller module found." if !$controller;
 
-    $method       ||= 'default';
-    $relative_uri ||= $uri;
+    $method ||= 'default';
+
+    # relative_uri can be blank.  i must have introduced a regression before
+    # when trying to set it to $uri if it was blank.  that resulted in
+    # 'default/default.html' in Apache2::Controller:Render::Template tests.
 
     check_allowed_method($controller, $method);
 

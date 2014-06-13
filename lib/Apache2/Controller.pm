@@ -1,17 +1,19 @@
 package Apache2::Controller;
 
+=encoding utf8
+
 =head1 NAME
 
 Apache2::Controller - fast MVC-style Apache2 handler apps
 
 =head1 VERSION
 
-Version 1.001.000
+Version 1.001.001
 
 =cut
 
 use version;
-our $VERSION = version->new('1.001.000');
+our $VERSION = version->new('1.001.001');
 
 =head1 INSTALLATION PRE-REQUISITES
 
@@ -23,7 +25,7 @@ This is a drawback of using L<Apache::Test>.
 
 =head1 SYNOPSIS
 
-Your application IS the controller.  A2C gets all the 
+The handler IS the controller.  A2C gets all the 
 abstractions out from between your controller logic and
 the Apache2 methods to control input/output, status etc.
 You control Apache2 directly, or use a rendering base like 
@@ -125,18 +127,6 @@ to the methods directly via C<< $self >>, simply use
 L<Apache2::Request> as a base and it will auto-delegate
 all the methods.  
 See L<Apache2::Request/SUBCLASSING Apache2::Request>.
-
-=for comment
-
-L<Apache2::Controller::Upload> early in your C<use base> list, 
-which will add the methods from L<Apache2::Upload> when the
-L<Apache2::Request> object gets created.
-L<Apache2::Controller::Uploads> is a second base module for controller 
-modules to inherit from to allow file uploads and provide various handy 
-file conversion routines, if you have the appropriate binaries 
-installed.
-
-=pod
 
 For using other Apache2::Controller extension methods, use 
 another base class like 
@@ -973,8 +963,6 @@ L<Apache2::Controller::X>
 
 L<Apache2::Controller::Dispatch>
 
-L<Apache2::Controller::Uploads>
-
 L<Apache2::Controller::Session>
 
 L<Apache2::Controller::DBI::Connector>
@@ -1005,6 +993,9 @@ and all the great people on the modperl mailing list.
 Special thanks to Nobuo Danjou for Apache2::AuthenOpenID
 which edumacated me on how the OpenID authen module
 should work.
+
+Super thanks to Roberto C. Sánchez for help packaging
+up A2C for Debian distribution.
 
 Of course, thanks to the many mod_perl and Apache authors
 and all the CPAN authors whose modules this depends on.

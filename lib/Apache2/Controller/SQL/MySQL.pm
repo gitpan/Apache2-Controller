@@ -6,12 +6,12 @@ Apache2::Controller::SQL::MySQL - useful database methods for MySQL
 
 =head1 VERSION
 
-Version 1.001.000
+Version 1.001.001
 
 =cut
 
 use version;
-our $VERSION = version->new('1.001.000');
+our $VERSION = version->new('1.001.001');
 
 =head1 SYNOPSIS
 
@@ -27,6 +27,11 @@ our $VERSION = version->new('1.001.000');
 Provides some useful methods for interacting with a MySQL database.
 
 This isn't really standard or a necessary part of A2C, I just find it handy.
+
+=head1 DEPRECATED
+
+Don't depend on this.  I intend to remove it in a future
+release because it is not relevant.
 
 =head1 METHODS
 

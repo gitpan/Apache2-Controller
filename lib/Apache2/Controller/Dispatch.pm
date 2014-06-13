@@ -6,12 +6,12 @@ Apache2::Controller::Dispatch - dispatch base class for Apache::Controller
 
 =head1 VERSION
 
-Version 1.001.000
+Version 1.001.001
 
 =cut
 
 use version;
-our $VERSION = version->new('1.001.000');
+our $VERSION = version->new('1.001.001');
 
 =head1 SYNOPSIS
 
@@ -50,6 +50,7 @@ has no methods.
  # /etc/myapp/dispatch.yaml:
  foo:       MyApp::Controller::Foo
  bar:       MyApp::Controller::Bar
+ 'foo/bar': MyApp::Controller::Foo::Bar
  biz:       MyApp::C::Biz
  'biz/baz': MyApp::Controller::Biz::Baz
 
@@ -81,6 +82,7 @@ has no methods.
  sub dispatch_map { return {
      foo        => 'MyApp::C::Foo',
      bar        => 'MyApp::C::Bar',
+     'foo/bar'  => 'MyApp::C::Foo::Bar',
      biz        => 'MyApp::C::Biz',
      'biz/baz'  => 'MyApp::C::Biz::Baz',
  } }

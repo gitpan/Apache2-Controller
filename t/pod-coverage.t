@@ -16,8 +16,14 @@ eval "use Pod::Coverage $min_pc";
 plan skip_all => "Pod::Coverage $min_pc required for testing POD coverage"
     if $@;
 
-#my @modules = all_modules();
-#diag("modules testing:\n".Dump(\@modules));
-#pod_coverage_ok($_, "$_ is covered") for @modules;
+# Directives module cannot be loaded outside of mod_perl apache conf
+my %exclude = map {($_=>1)} qw(
+    Apache2::Controller::Directives
+);
 
-all_pod_coverage_ok();
+my @modules = grep !$exclude{$_}, all_modules();
+#diag("modules testing:\n".Dump(\@modules));
+plan tests => scalar(@modules);
+pod_coverage_ok($_, "$_ is covered") for @modules;
+
+#all_pod_coverage_ok();
